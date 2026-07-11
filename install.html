@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Overleaf → Claude: comment capture</title>
+<style>
+  body { font-family: -apple-system, sans-serif; max-width: 720px; margin: 3rem auto; line-height: 1.5; padding: 0 1rem; }
+  .bml { display: inline-block; padding: .6rem 1.2rem; background: #138a07; color: #fff; border-radius: 8px;
+         text-decoration: none; font-weight: 600; font-size: 1.05rem; }
+  ol li { margin: .5rem 0; }
+  textarea { width: 100%; height: 8rem; font-family: monospace; font-size: .75rem; }
+  .note { background: #f6f6ef; border-left: 4px solid #ccc; padding: .6rem .9rem; }
+</style>
+</head>
+<body>
+<h1>Overleaf → Claude</h1>
+<p>Drag this button to your bookmarks bar (one time only):</p>
+<p><a class="bml" href="javascript:%2F%2F%20Overleaf%20-%3E%20Claude%20comment%20capture%20bookmarklet%20%28source%29%0A%2F%2F%20Built%202026-07-10%20against%20the%20review-panel%20DOM%20verified%20live%20that%20day%0A%2F%2F%20%28classes%3A%20review-panel-entry-comment%2C%20review-panel-comment-body%2C%0A%2F%2F%20%20review-panel-entry-user%2C%20review-panel-entry-time%2C%20data-pos%2Fdata-top%29.%0A%2F%2F%20Runs%20only%20when%20clicked%2C%20only%20in%20the%20already-open%20Overleaf%20tab.%0A%2F%2F%20Reads%20the%20rendered%20page%2C%20downloads%20a%20JSON%20file%2C%20sends%20nothing%20anywhere.%0A%28async%20%28%29%20%3D%3E%20%7B%0A%20%20const%20%24%24%20%3D%20%28sel%2C%20root%29%20%3D%3E%20Array.from%28%28root%20%7C%7C%20document%29.querySelectorAll%28sel%29%29%3B%0A%0A%20%20const%20panel%20%3D%20document.querySelector%28%27.review-panel-container%27%29%3B%0A%20%20if%20%28%21panel%29%20%7B%0A%20%20%20%20alert%28%27Overleaf%20%E2%86%92%20Claude%3A%20open%20the%20Review%20panel%20first%20%28comment%20icon%2C%20top%20right%29%2C%20then%20click%20the%20bookmarklet%20again.%27%29%3B%0A%20%20%20%20return%3B%0A%20%20%7D%0A%0A%20%20%2F%2F%201.%20Expand%20every%20truncated%20comment%20%28%22show%20more%22%29%2C%20repeating%20until%20none%20remain.%0A%20%20for%20%28let%20pass%20%3D%200%3B%20pass%20%3C%2012%3B%20pass%2B%2B%29%20%7B%0A%20%20%20%20const%20more%20%3D%20%24%24%28%27.review-panel-expandable-links%20button%27%2C%20panel%29%0A%20%20%20%20%20%20.filter%28b%20%3D%3E%20%2Fshow%5Cs%2Amore%2Fi.test%28b.textContent%29%29%3B%0A%20%20%20%20if%20%28more.length%20%3D%3D%3D%200%29%20break%3B%0A%20%20%20%20more.forEach%28b%20%3D%3E%20b.click%28%29%29%3B%0A%20%20%20%20await%20new%20Promise%28r%20%3D%3E%20setTimeout%28r%2C%20250%29%29%3B%0A%20%20%7D%0A%0A%20%20%2F%2F%202.%20Scrape%20every%20comment%20thread%20in%20the%20panel%20%28first%20message%20%2B%20any%20replies%29.%0A%20%20const%20threads%20%3D%20%24%24%28%27.review-panel-entry-comment%27%2C%20panel%29.map%28entry%20%3D%3E%20%7B%0A%20%20%20%20let%20messages%20%3D%20%24%24%28%27.review-panel-comment%27%2C%20entry%29.map%28c%20%3D%3E%20%28%7B%0A%20%20%20%20%20%20author%3A%20%28c.querySelector%28%27.review-panel-entry-user%27%29%20%7C%7C%20%7B%7D%29.textContent%20%7C%7C%20%27%27%2C%0A%20%20%20%20%20%20time%3A%20%28c.querySelector%28%27.review-panel-entry-time%27%29%20%7C%7C%20%7B%7D%29.textContent%20%7C%7C%20%27%27%2C%0A%20%20%20%20%20%20text%3A%20%28c.querySelector%28%27.review-panel-comment-body%27%29%20%7C%7C%20%7B%7D%29.textContent%20%7C%7C%20%27%27%0A%20%20%20%20%7D%29%29%3B%0A%20%20%20%20%2F%2F%20Fallback%20if%20Overleaf%20ever%20drops%20the%20inner%20wrapper%20class%3A%0A%20%20%20%20if%20%28messages.length%20%3D%3D%3D%200%29%20%7B%0A%20%20%20%20%20%20messages%20%3D%20%24%24%28%27.review-panel-comment-body%27%2C%20entry%29.map%28b%20%3D%3E%20%28%7B%0A%20%20%20%20%20%20%20%20author%3A%20%27%27%2C%20time%3A%20%27%27%2C%20text%3A%20b.textContent%20%7C%7C%20%27%27%0A%20%20%20%20%20%20%7D%29%29%3B%0A%20%20%20%20%7D%0A%20%20%20%20messages%20%3D%20messages%0A%20%20%20%20%20%20.map%28m%20%3D%3E%20%28%7B%20author%3A%20m.author.trim%28%29%2C%20time%3A%20m.time.trim%28%29%2C%20text%3A%20m.text.trim%28%29%20%7D%29%29%0A%20%20%20%20%20%20.filter%28m%20%3D%3E%20m.text%29%3B%0A%20%20%20%20return%20%7B%0A%20%20%20%20%20%20dataPos%3A%20Number%28entry.getAttribute%28%27data-pos%27%29%29%2C%0A%20%20%20%20%20%20dataTop%3A%20Number%28entry.getAttribute%28%27data-top%27%29%29%2C%0A%20%20%20%20%20%20messages%0A%20%20%20%20%7D%3B%0A%20%20%7D%29.filter%28t%20%3D%3E%20t.messages.length%20%3E%200%29%0A%20%20%20%20.sort%28%28a%2C%20b%29%20%3D%3E%20a.dataPos%20-%20b.dataPos%29%3B%0A%0A%20%20%2F%2F%203.%20Also%20capture%20tracked-change%20text%20currently%20rendered%20in%20the%20editor.%0A%20%20%2F%2F%20%20%20%20CodeMirror%20virtualizes%2C%20so%20this%20covers%20only%20lines%20near%20the%20viewport%3B%0A%20%20%2F%2F%20%20%20%20the%20JSON%20flags%20it%20as%20partial.%20Full%20tracked%20changes%20still%20travel%20by%0A%20%20%2F%2F%20%20%20%20Review%20%3E%20Accept%2C%20then%20git.%0A%20%20const%20trackedChangesVisible%20%3D%20%24%24%28%27.cm-content%20.ol-cm-change%27%29.map%28s%20%3D%3E%20%28%7B%0A%20%20%20%20kind%3A%20s.className.replace%28%2F%5Cs%2B%2Fg%2C%20%27%20%27%29.trim%28%29%2C%0A%20%20%20%20text%3A%20%28s.textContent%20%7C%7C%20%27%27%29.trim%28%29.slice%280%2C%202000%29%0A%20%20%7D%29%29.filter%28c%20%3D%3E%20c.text%29%3B%0A%0A%20%20%2F%2F%204.%20Identify%20project%20and%20file.%0A%20%20const%20crumbs%20%3D%20%24%24%28%27.ol-cm-breadcrumbs%20div%27%29%3B%0A%20%20const%20file%20%3D%20crumbs.length%20%3F%20crumbs%5B0%5D.textContent.trim%28%29%20%3A%20%27unknown%27%3B%0A%20%20const%20project%20%3D%20%28document.title%20%7C%7C%20%27overleaf%27%29%0A%20%20%20%20.replace%28%2F%5Cs%2A-%5Cs%2A%28Online%20LaTeX%20Editor%5Cs%2A%29%3FOverleaf.%2A%24%2Fi%2C%20%27%27%29.trim%28%29%3B%0A%0A%20%20const%20payload%20%3D%20%7B%0A%20%20%20%20generator%3A%20%27overleaf-comments-bookmarklet%20v1.0%27%2C%0A%20%20%20%20project%3A%20project%2C%0A%20%20%20%20file%3A%20file%2C%0A%20%20%20%20url%3A%20location.href%2C%0A%20%20%20%20capturedAt%3A%20new%20Date%28%29.toISOString%28%29%2C%0A%20%20%20%20threadCount%3A%20threads.length%2C%0A%20%20%20%20threads%3A%20threads%2C%0A%20%20%20%20trackedChangesVisible%3A%20%7B%0A%20%20%20%20%20%20note%3A%20%27partial%3A%20only%20editor%20lines%20rendered%20at%20capture%20time%3B%20for%20the%20full%20set%2C%20Review%20%3E%20Accept%20in%20Overleaf%20so%20the%20text%20syncs%20via%20git%27%2C%0A%20%20%20%20%20%20items%3A%20trackedChangesVisible%0A%20%20%20%20%7D%0A%20%20%7D%3B%0A%0A%20%20%2F%2F%205.%20Download%20the%20JSON%20%28and%20copy%20to%20clipboard%20as%20a%20fallback%29.%0A%20%20const%20json%20%3D%20JSON.stringify%28payload%2C%20null%2C%202%29%3B%0A%20%20const%20slug%20%3D%20%28project%20%2B%20%27_%27%20%2B%20file%29.toLowerCase%28%29.replace%28%2F%5B%5Ea-z0-9%5D%2B%2Fg%2C%20%27_%27%29.replace%28%2F%5E_%2B%7C_%2B%24%2Fg%2C%20%27%27%29%3B%0A%20%20const%20stamp%20%3D%20new%20Date%28%29.toISOString%28%29.slice%280%2C%2010%29%3B%0A%20%20const%20a%20%3D%20document.createElement%28%27a%27%29%3B%0A%20%20a.href%20%3D%20URL.createObjectURL%28new%20Blob%28%5Bjson%5D%2C%20%7B%20type%3A%20%27application%2Fjson%27%20%7D%29%29%3B%0A%20%20a.download%20%3D%20%27overleaf_comments_%27%20%2B%20slug%20%2B%20%27_%27%20%2B%20stamp%20%2B%20%27.json%27%3B%0A%20%20document.body.appendChild%28a%29%3B%0A%20%20a.click%28%29%3B%0A%20%20a.remove%28%29%3B%0A%20%20let%20clip%20%3D%20%27%27%3B%0A%20%20try%20%7B%20await%20navigator.clipboard.writeText%28json%29%3B%20clip%20%3D%20%27%20Also%20copied%20to%20clipboard.%27%3B%20%7D%20catch%20%28e%29%20%7B%7D%0A%0A%20%20const%20msgCount%20%3D%20threads.reduce%28%28n%2C%20t%29%20%3D%3E%20n%20%2B%20t.messages.length%2C%200%29%3B%0A%20%20alert%28%27Overleaf%20%E2%86%92%20Claude%3A%20captured%20%27%20%2B%20threads.length%20%2B%20%27%20comment%20threads%20%28%27%20%2B%0A%20%20%20%20msgCount%20%2B%20%27%20messages%29%20from%20%27%20%2B%20file%20%2B%20%27.%5CnDownloaded%20%27%20%2B%20a.download%20%2B%20%27%20to%20your%20Downloads%20folder.%27%20%2B%20clip%20%2B%0A%20%20%20%20%27%5Cn%5CnIf%20a%20comment%20count%20looks%20low%2C%20scroll%20through%20the%20document%20once%20and%20click%20again.%27%29%3B%0A%7D%29%28%29%3B%0A">Overleaf → Claude</a></p>
+<h2>Each time you want Claude to read comments</h2>
+<ol>
+  <li>Open the Overleaf project and open the <b>Review</b> panel (comment icon, top right).</li>
+  <li>Click the <b>Overleaf → Claude</b> bookmark.</li>
+  <li>It expands every "show more", captures all comments plus visible tracked changes,
+      and downloads <code>overleaf_comments_&lt;project&gt;_&lt;date&gt;.json</code> to Downloads.</li>
+  <li>Tell Claude "done". Claude reads the JSON from Downloads.</li>
+</ol>
+<div class="note">
+<p><b>Limits.</b> Captures the file currently open, so click once per file
+(e.g. main.tex, then appendix_theory.tex). Resolved comments stay hidden unless you unhide them.
+Tracked-change capture is partial (only rendered lines): for the full set, use
+<b>Review → Accept</b> in Overleaf, which syncs the text through git.
+If Overleaf redesigns the review panel, the bookmarklet may need a patch: ask Claude.</p>
+<p><b>Safety.</b> Runs only when clicked, only in your open tab, reads only what is on the page,
+downloads locally, sends nothing anywhere, stores no credential.</p>
+</div>
+<h2>Fallback if the bookmark does nothing</h2>
+<p>Some browser setups block <code>javascript:</code> bookmarks. Then paste the script below into
+the DevTools <b>Console</b> (F12) on the Overleaf tab and press Enter. Chrome may ask you to type
+<code>allow pasting</code> first.</p>
+<textarea readonly>// Overleaf -&gt; Claude comment capture bookmarklet (source)
+// Built 2026-07-10 against the review-panel DOM verified live that day
+// (classes: review-panel-entry-comment, review-panel-comment-body,
+//  review-panel-entry-user, review-panel-entry-time, data-pos/data-top).
+// Runs only when clicked, only in the already-open Overleaf tab.
+// Reads the rendered page, downloads a JSON file, sends nothing anywhere.
+(async () =&gt; {
+  const $$ = (sel, root) =&gt; Array.from((root || document).querySelectorAll(sel));
+
+  const panel = document.querySelector(&#x27;.review-panel-container&#x27;);
+  if (!panel) {
+    alert(&#x27;Overleaf → Claude: open the Review panel first (comment icon, top right), then click the bookmarklet again.&#x27;);
+    return;
+  }
+
+  // 1. Expand every truncated comment (&quot;show more&quot;), repeating until none remain.
+  for (let pass = 0; pass &lt; 12; pass++) {
+    const more = $$(&#x27;.review-panel-expandable-links button&#x27;, panel)
+      .filter(b =&gt; /show\s*more/i.test(b.textContent));
+    if (more.length === 0) break;
+    more.forEach(b =&gt; b.click());
+    await new Promise(r =&gt; setTimeout(r, 250));
+  }
+
+  // 2. Scrape every comment thread in the panel (first message + any replies).
+  const threads = $$(&#x27;.review-panel-entry-comment&#x27;, panel).map(entry =&gt; {
+    let messages = $$(&#x27;.review-panel-comment&#x27;, entry).map(c =&gt; ({
+      author: (c.querySelector(&#x27;.review-panel-entry-user&#x27;) || {}).textContent || &#x27;&#x27;,
+      time: (c.querySelector(&#x27;.review-panel-entry-time&#x27;) || {}).textContent || &#x27;&#x27;,
+      text: (c.querySelector(&#x27;.review-panel-comment-body&#x27;) || {}).textContent || &#x27;&#x27;
+    }));
+    // Fallback if Overleaf ever drops the inner wrapper class:
+    if (messages.length === 0) {
+      messages = $$(&#x27;.review-panel-comment-body&#x27;, entry).map(b =&gt; ({
+        author: &#x27;&#x27;, time: &#x27;&#x27;, text: b.textContent || &#x27;&#x27;
+      }));
+    }
+    messages = messages
+      .map(m =&gt; ({ author: m.author.trim(), time: m.time.trim(), text: m.text.trim() }))
+      .filter(m =&gt; m.text);
+    return {
+      dataPos: Number(entry.getAttribute(&#x27;data-pos&#x27;)),
+      dataTop: Number(entry.getAttribute(&#x27;data-top&#x27;)),
+      messages
+    };
+  }).filter(t =&gt; t.messages.length &gt; 0)
+    .sort((a, b) =&gt; a.dataPos - b.dataPos);
+
+  // 3. Also capture tracked-change text currently rendered in the editor.
+  //    CodeMirror virtualizes, so this covers only lines near the viewport;
+  //    the JSON flags it as partial. Full tracked changes still travel by
+  //    Review &gt; Accept, then git.
+  const trackedChangesVisible = $$(&#x27;.cm-content .ol-cm-change&#x27;).map(s =&gt; ({
+    kind: s.className.replace(/\s+/g, &#x27; &#x27;).trim(),
+    text: (s.textContent || &#x27;&#x27;).trim().slice(0, 2000)
+  })).filter(c =&gt; c.text);
+
+  // 4. Identify project and file.
+  const crumbs = $$(&#x27;.ol-cm-breadcrumbs div&#x27;);
+  const file = crumbs.length ? crumbs[0].textContent.trim() : &#x27;unknown&#x27;;
+  const project = (document.title || &#x27;overleaf&#x27;)
+    .replace(/\s*-\s*(Online LaTeX Editor\s*)?Overleaf.*$/i, &#x27;&#x27;).trim();
+
+  const payload = {
+    generator: &#x27;overleaf-comments-bookmarklet v1.0&#x27;,
+    project: project,
+    file: file,
+    url: location.href,
+    capturedAt: new Date().toISOString(),
+    threadCount: threads.length,
+    threads: threads,
+    trackedChangesVisible: {
+      note: &#x27;partial: only editor lines rendered at capture time; for the full set, Review &gt; Accept in Overleaf so the text syncs via git&#x27;,
+      items: trackedChangesVisible
+    }
+  };
+
+  // 5. Download the JSON (and copy to clipboard as a fallback).
+  const json = JSON.stringify(payload, null, 2);
+  const slug = (project + &#x27;_&#x27; + file).toLowerCase().replace(/[^a-z0-9]+/g, &#x27;_&#x27;).replace(/^_+|_+$/g, &#x27;&#x27;);
+  const stamp = new Date().toISOString().slice(0, 10);
+  const a = document.createElement(&#x27;a&#x27;);
+  a.href = URL.createObjectURL(new Blob([json], { type: &#x27;application/json&#x27; }));
+  a.download = &#x27;overleaf_comments_&#x27; + slug + &#x27;_&#x27; + stamp + &#x27;.json&#x27;;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  let clip = &#x27;&#x27;;
+  try { await navigator.clipboard.writeText(json); clip = &#x27; Also copied to clipboard.&#x27;; } catch (e) {}
+
+  const msgCount = threads.reduce((n, t) =&gt; n + t.messages.length, 0);
+  alert(&#x27;Overleaf → Claude: captured &#x27; + threads.length + &#x27; comment threads (&#x27; +
+    msgCount + &#x27; messages) from &#x27; + file + &#x27;.\nDownloaded &#x27; + a.download + &#x27; to your Downloads folder.&#x27; + clip +
+    &#x27;\n\nIf a comment count looks low, scroll through the document once and click again.&#x27;);
+})();
+</textarea>
+</body>
+</html>
