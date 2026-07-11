@@ -18,35 +18,55 @@ credential, and it sends nothing to any server.
 
 ## Install
 
-Open [`install.html`](install.html) in your browser and drag the **Overleaf → Claude**
-button to your bookmarks bar. That is the whole install.
+You need the button on a real page in your browser, not GitHub's source view.
 
-If your browser blocks `javascript:` bookmarks, the same page has the script ready
-to paste into the DevTools Console (F12) instead.
+**Easiest:** open the hosted installer at
+**https://alanseals.github.io/overleaf-comment-capture/install.html** and drag the
+green **Overleaf → Claude** button to your bookmarks bar.
+
+**Or locally:** click the green **Code** button on this repo, **Download ZIP**, unzip,
+then double-click `install.html` to open it in your browser and drag the button.
+Do not open `install.html` from GitHub's file viewer, that shows the code, not the page.
+
+If you do not see a bookmarks bar under the address bar, press **Cmd+Shift+B** (Mac)
+or **Ctrl+Shift+B** (Windows/Linux) to show it first. If your browser refuses to
+keep a `javascript:` bookmark, the installer page also has the script ready to paste
+into the DevTools Console (F12); Chrome may ask you to type `allow pasting` first.
 
 ## Use
 
-1. Open the Overleaf project and open the **Review** panel (comment icon, top right).
+1. Open the Overleaf project and open the **Review** panel (the comment icon, top right).
+   The comments must be visible on the page, this is what a plain "Save page" misses.
 2. Click the bookmark.
 3. It expands every "show more", collects each comment (author, timestamp, full
    untruncated text, and its `data-pos` anchor), grabs any tracked-change spans
    currently rendered, and downloads `overleaf_comments_<project>_<date>.json`.
 
-Capture one file at a time (click again after switching files). Resolved comments
-stay hidden unless you unhide them in Overleaf first.
+The downloaded file is plain JSON. If you use Claude Code, tell it "done" and it reads
+the file from your Downloads folder. Otherwise open it in any text editor, or point any
+script or LLM at the path.
+
+If clicking gives "could not find the review panel" while the panel is open, Overleaf's
+layout has changed since this build; send that message to the maintainer to get the
+selectors patched.
 
 ## Output
 
 ```json
 {
+  "generator": "overleaf-comments-bookmarklet v1.1",
   "project": "My_Paper",
   "file": "main.tex",
+  "url": "https://www.overleaf.com/project/<id>",
+  "capturedAt": "2026-07-11T02:25:38.396Z",
   "threadCount": 13,
+  "messageCount": 13,
   "threads": [
-    { "dataPos": 2755, "messages": [
-        { "author": "Jane Doe", "time": "10 July, 7:53 am", "text": "..." } ] }
+    { "dataPos": 2755, "dataTop": 1637, "messages": [
+        { "author": "Jane Doe", "time": "10 July, 7:53 am",
+          "text": "...", "possiblyTruncated": false } ] }
   ],
-  "trackedChangesVisible": { "note": "partial ...", "items": [ ... ] }
+  "trackedChangesVisible": { "note": "partial ...", "items": [ ] }
 }
 ```
 
@@ -56,10 +76,14 @@ stay hidden unless you unhide them in Overleaf first.
   the viewport, so tracked-change capture is partial. For the complete set, use
   **Review → Accept** in Overleaf, which lands the text in the source where Git can
   sync it.
+- **Unresolved comments only.** Resolved comments are excluded unless you turn on
+  **Show resolved comments** (the inbox icon in the Review panel header) before capturing.
+- **Current file, current-file tab only.** It captures the file you have open and the
+  "Current file" tab, not the "Overview" tab and not other files. For a multi-file
+  project, click again after switching files.
 - **DOM-dependent.** It targets Overleaf's current review-panel class names
   (`review-panel-entry-comment`, `review-panel-comment-body`, ...). If Overleaf
-  redesigns the panel, `capture.js` needs a small patch and `install.html` a
-  regenerate.
+  redesigns the panel, `capture.js` needs a small patch and `install.html` a regenerate.
 - **`data-pos` indexes the live edited document**, which may hold tracked changes
   the Git clone lacks, so map comments to source by content, not by offset alone.
 
