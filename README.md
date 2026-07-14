@@ -38,9 +38,10 @@ into the DevTools Console (F12); Chrome may ask you to type `allow pasting` firs
 1. Open the Overleaf project and open the **Review** panel (the comment icon, top right).
    The comments must be visible on the page, this is what a plain "Save page" misses.
 2. Click the bookmark.
-3. It expands every "show more", collects each comment (author, timestamp, full
-   untruncated text, and its `data-pos` anchor), grabs any tracked-change spans
-   currently rendered, and downloads `overleaf_comments_<project>_<date>.json`.
+3. It scrolls the file top to bottom, expands every "show more", collects each comment
+   (author, timestamp, full untruncated text, and its `data-pos` anchor), grabs the
+   tracked-change spans, and downloads `overleaf_comments_<project>_<date>.json`. A green
+   note in the corner shows it is working, and your scroll position is restored at the end.
 
 The downloaded file is plain JSON. If you use Claude Code, tell it "done" and it reads
 the file from your Downloads folder. Otherwise open it in any text editor, or point any
@@ -54,7 +55,7 @@ selectors patched.
 
 ```json
 {
-  "generator": "overleaf-comments-bookmarklet v1.1",
+  "generator": "overleaf-comments-bookmarklet v1.2",
   "project": "My_Paper",
   "file": "main.tex",
   "url": "https://www.overleaf.com/project/<id>",
@@ -66,16 +67,18 @@ selectors patched.
         { "author": "Jane Doe", "time": "10 July, 7:53 am",
           "text": "...", "possiblyTruncated": false } ] }
   ],
-  "trackedChangesVisible": { "note": "partial ...", "items": [ ] }
+  "trackedChanges": { "note": "swept top-to-bottom ...", "items": [ ] }
 }
 ```
 
 ## Limitations
 
-- **Comments, not the full tracked-change set.** CodeMirror only renders lines near
-  the viewport, so tracked-change capture is partial. For the complete set, use
-  **Review → Accept** in Overleaf, which lands the text in the source where Git can
-  sync it.
+- **Whole file, but one file at a time.** The review panel virtualizes: it only renders
+  the comment entries and tracked-change spans whose anchor line is near the viewport.
+  As of v1.2 the tool scrolls the open file top to bottom and de-duplicates by anchor, so
+  it captures every comment in that file rather than only the first screen. Tracked changes
+  are swept the same way; for the authoritative set you can still use **Review → Accept** in
+  Overleaf, which lands the text in the source where Git can sync it.
 - **Unresolved comments only.** Resolved comments are excluded unless you turn on
   **Show resolved comments** (the inbox icon in the Review panel header) before capturing.
 - **Current file, current-file tab only.** It captures the file you have open and the
@@ -91,6 +94,13 @@ selectors patched.
 
 Runs only when clicked, only in the tab you already have open, reads only what is on
 the page, downloads locally, transmits nothing, and stores no credential.
+
+## Developing
+
+`capture.js` is the single source. `install.html` embeds it twice, once as the encoded
+`javascript:` bookmarklet and once as a plain console block, so never hand-edit those.
+After changing `capture.js`, run `node build.js` to regenerate `install.html`; the build
+also serves the GitHub Pages installer.
 
 ## Credit
 
