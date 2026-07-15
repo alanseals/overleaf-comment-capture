@@ -37,11 +37,13 @@ into the DevTools Console (F12); Chrome may ask you to type `allow pasting` firs
 
 1. Open the Overleaf project and open the **Review** panel (the Review icon in the left
    sidebar). The comments must be visible on the page, this is what a plain "Save page" misses.
+   Open a tab for each file you want captured, comments are collected per open tab.
 2. Click the bookmark.
-3. It scrolls the file top to bottom, expands every "show more", collects each comment
-   (author, timestamp, full untruncated text, and its `data-pos` anchor), grabs the
-   tracked-change spans, and downloads `overleaf_comments_<project>_<date>.json`. A green
-   note in the corner shows it is working, and your scroll position is restored at the end.
+3. It visits every open file tab in turn, scrolls each file top to bottom, expands every
+   "show more", collects each comment (author, timestamp, full untruncated text, and its
+   `data-pos` anchor), grabs the tracked-change spans, and downloads
+   `overleaf_comments_<project>_<date>.json`. A green note in the corner names the file it
+   is working on, and it returns you to the tab you started on.
 
 The downloaded file is plain JSON. If you use Claude Code, tell it "done" and it reads
 the file from your Downloads folder. Otherwise open it in any text editor, or point any
@@ -55,46 +57,55 @@ selectors patched.
 
 ```json
 {
-  "generator": "overleaf-comments-bookmarklet v1.3",
+  "generator": "overleaf-comments-bookmarklet v1.4",
   "project": "My_Paper",
-  "file": "main.tex",
-  "fileSource": "breadcrumbs",
   "url": "https://www.overleaf.com/project/<id>",
   "capturedAt": "2026-07-11T02:25:38.396Z",
-  "threadCount": 13,
-  "messageCount": 13,
-  "selectorHealth": { "reviewPanel": true, "editorScroller": true, "breadcrumbs": true,
-    "fileSource": "breadcrumbs", "threadsParsed": 13, "entriesUnparsed": 0 },
-  "threads": [
-    { "dataPos": 2755, "dataTop": 1637, "messages": [
-        { "author": "Jane Doe", "time": "10 July, 7:53 am",
-          "text": "...", "possiblyTruncated": false } ] }
-  ],
-  "trackedChanges": { "note": "swept top-to-bottom ...", "items": [ ] }
+  "fileCount": 2,
+  "tabIteration": "full",
+  "threadCount": 14,
+  "messageCount": 15,
+  "trackedChangesNote": "swept top-to-bottom per file ...",
+  "files": [
+    { "file": "main.tex", "fileSource": "editor-tab",
+      "threadCount": 13, "messageCount": 14, "truncatedCount": 0,
+      "selectorHealth": { "breadcrumbs": false, "editorScroller": true,
+        "threadsParsed": 13, "entriesUnparsed": 0 },
+      "threads": [
+        { "dataPos": 2755, "dataTop": 1637, "messages": [
+            { "author": "Jane Doe", "time": "10 July, 7:53 am",
+              "text": "...", "possiblyTruncated": false } ] }
+      ],
+      "trackedChanges": [ ] },
+    { "file": "appendix.tex", "fileSource": "editor-tab", "threadCount": 1, "...": "..." }
+  ]
 }
 ```
 
+`tabIteration` is `"full"` when every open tab was visited, `"single"` when only one tab
+was open (or no tab strip was found), and `"aborted"` when a tab refused to switch, in
+which case only the files listed were captured.
+
 ## Limitations
 
-- **Whole file, but one file at a time.** The review panel virtualizes: it only renders
-  the comment entries and tracked-change spans whose anchor line is near the viewport.
-  As of v1.2 the tool scrolls the open file top to bottom and de-duplicates by anchor, so
-  it captures every comment in that file rather than only the first screen. Tracked changes
-  are swept the same way; for the authoritative set you can still use **Review → Accept** in
-  Overleaf, which lands the text in the source where Git can sync it.
+- **Open tabs only.** The review panel virtualizes: it only renders the comment entries
+  and tracked-change spans whose anchor line is near the viewport. As of v1.2 the tool
+  scrolls each file top to bottom and de-duplicates by anchor, so it captures every
+  comment in the file rather than only the first screen. As of v1.4 it also visits every
+  open editor tab in one click, but a file with no open tab is not captured, open it
+  first. Tracked changes are swept the same way; for the authoritative set you can still
+  use **Review → Accept** in Overleaf, which lands the text in the source where Git can
+  sync it.
 - **Unresolved comments only.** Resolved comments are excluded unless you turn on
   **Show resolved comments** (the inbox icon in the Review panel header) before capturing.
-- **Current file, current-file tab only.** It captures the file you have open and the
-  "Current file" tab, not the "Overview" tab and not other files. For a multi-file
-  project, click again after switching files.
 - **DOM-dependent.** It targets Overleaf's current review-panel class names
-  (`review-panel-entry-comment`, `review-panel-comment-body`, ...). Overleaf is mid-way
-  through its 2026 editor redesign (file tabs, simplified toolbar, Review moved to the
-  left sidebar), so this is an active risk, not a theoretical one. As of v1.3 the tool
-  checks its own selectors instead of failing silently: the filename falls back from the
-  editor breadcrumb to the selected editor tab to the selected file-tree entry (the JSON
-  records which source won in `fileSource`), a `selectorHealth` block reports what
-  resolved, and the finish alert warns if comment entries rendered but could not be
+  (`review-panel-entry-comment`, `review-panel-comment-body`, ...), which survived the
+  2026 editor redesign; the editor breadcrumb did not (verified live 2026-07-14), so the
+  filename now falls back from the breadcrumb to the selected editor tab to the selected
+  file-tree entry. Tab labels are cleaned of Material-icon ligature text ("description",
+  "close") and Unicode format characters before the filename is extracted. The JSON
+  records which source won in `fileSource`, a per-file `selectorHealth` block reports
+  what resolved, and the finish alert warns if comment entries rendered but could not be
   parsed. When a warning appears, `capture.js` needs a small patch and `install.html`
   a regenerate.
 - **`data-pos` indexes the live edited document**, which may hold tracked changes

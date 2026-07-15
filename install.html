@@ -16,30 +16,32 @@
 <body>
 <h1>Overleaf → Claude</h1>
 <p>Drag this button to your bookmarks bar (one time only):</p>
-<p><a class="bml" href="javascript:%2F%2F%20Overleaf%20-%3E%20Claude%20comment%20capture%20bookmarklet%20(source)%20%20v1.3%0A%2F%2F%20Built%202026-07-10%2C%20hardened%202026-07-10%20after%20a%20hostile%20audit%2C%20against%20the%0A%2F%2F%20review-panel%20DOM%20verified%20live%20that%20day%20(classes%3A%20review-panel-entry-comment%2C%0A%2F%2F%20review-panel-comment-body%2C%20review-panel-entry-user%2C%20review-panel-entry-time%2C%0A%2F%2F%20data-pos%2Fdata-top%3B%20editor%20breadcrumb%20ol-cm-breadcrumbs%20is%20file-then-section).%0A%2F%2F%20v1.2%20(2026-07-14)%3A%20sweep%20the%20editor%20top%20to%20bottom%20before%20scraping.%20The%20review%0A%2F%2F%20panel%20virtualizes%20--%20it%20only%20renders%20the%20comment%20entries%20and%20tracked-change%0A%2F%2F%20spans%20whose%20anchor%20line%20is%20near%20the%20current%20viewport%2C%20so%20a%20single%20snapshot%20from%0A%2F%2F%20the%20top%20of%20a%20long%20file%20captured%20only%20the%20first%20screen's%20comments.%20v1.2%20scrolls%0A%2F%2F%20the%20document%20in%20steps%2C%20collects%20at%20each%20stop%2C%20de-duplicates%20entries%20by%20their%0A%2F%2F%20data-pos%20anchor%2C%20and%20restores%20the%20original%20scroll%20position.%20If%20the%20scroller%20is%0A%2F%2F%20not%20found%20it%20falls%20back%20to%20a%20single%20snapshot%2C%20never%20worse%20than%20before.%0A%2F%2F%20v1.3%20(2026-07-14)%3A%20defend%20against%20Overleaf's%202026%20editor%20redesign%20(file%20tabs%2C%0A%2F%2F%20simplified%20toolbar%2C%20Review%20moved%20to%20the%20left%20sidebar).%20The%20filename%20now%20falls%0A%2F%2F%20back%20from%20the%20breadcrumb%20to%20the%20selected%20editor%20tab%20to%20the%20selected%20file-tree%0A%2F%2F%20entry%2C%20the%20payload%20records%20which%20source%20won%20(fileSource)%20plus%20a%20selectorHealth%0A%2F%2F%20block%2C%20and%20the%20final%20alert%20warns%20when%20comment%20entries%20rendered%20but%20could%20not%20be%0A%2F%2F%20parsed%20--%20the%20signature%20of%20a%20class-name%20change%20--%20instead%20of%20failing%20silently.%0A%2F%2F%20Runs%20only%20when%20clicked%2C%20only%20in%20the%20already-open%20Overleaf%20tab.%20Reads%20the%0A%2F%2F%20rendered%20page%2C%20downloads%20a%20JSON%20file%2C%20sends%20nothing%20anywhere.%0A(async%20()%20%3D%3E%20%7B%0A%20%20const%20%24%24%20%3D%20(sel%2C%20root)%20%3D%3E%20Array.from((root%20%7C%7C%20document).querySelectorAll(sel))%3B%0A%20%20const%20sleep%20%3D%20(ms)%20%3D%3E%20new%20Promise(r%20%3D%3E%20setTimeout(r%2C%20ms))%3B%0A%20%20const%20isTruncated%20%3D%20(t)%20%3D%3E%20%2F(%E2%80%A6%7C%5C.%5C.%5C.)%5Cs*%24%2F.test((t%20%7C%7C%20'').trim())%3B%0A%20%20const%20numAttr%20%3D%20(el%2C%20name)%20%3D%3E%20%7B%0A%20%20%20%20const%20v%20%3D%20el.getAttribute(name)%3B%0A%20%20%20%20const%20n%20%3D%20v%20%3D%3D%20null%20%3F%20NaN%20%3A%20Number(v)%3B%0A%20%20%20%20return%20Number.isFinite(n)%20%3F%20n%20%3A%20null%3B%0A%20%20%7D%3B%0A%0A%20%20const%20panel%20%3D%20document.querySelector('.review-panel-container')%20%7C%7C%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20document.querySelector('%5Bdata-testid%3D%22review-panel%22%5D')%3B%0A%20%20if%20(!panel)%20%7B%0A%20%20%20%20alert('Overleaf%20%E2%86%92%20Claude%3A%20could%20not%20find%20the%20review%20panel.%5Cn%5Cn'%20%2B%0A%20%20%20%20%20%20'Open%20the%20Review%20panel%20first%20(the%20Review%20icon%20in%20the%20left%20sidebar)%2C%20then%20click%20again.%5Cn%5Cn'%20%2B%0A%20%20%20%20%20%20'If%20the%20Review%20panel%20IS%20already%20open%20and%20you%20still%20see%20this%2C%20Overleaf%20may%20have%20changed%20'%20%2B%0A%20%20%20%20%20%20'its%20layout%20since%20this%20tool%20was%20built%20(v1.3%2C%202026-07-14).%20Send%20Claude%20this%20exact%20message%20'%20%2B%0A%20%20%20%20%20%20'so%20it%20can%20update%20the%20tool.')%3B%0A%20%20%20%20return%3B%0A%20%20%7D%0A%0A%20%20%2F%2F%20Small%20on-screen%20note%2C%20because%20the%20sweep%20takes%20a%20few%20seconds%20and%20should%20not%0A%20%20%2F%2F%20look%20like%20the%20click%20did%20nothing.%0A%20%20const%20hud%20%3D%20document.createElement('div')%3B%0A%20%20hud.textContent%20%3D%20'Overleaf%20%E2%86%92%20Claude%3A%20capturing%20comments%E2%80%A6'%3B%0A%20%20hud.style.cssText%20%3D%20'position%3Afixed%3Bz-index%3A2147483647%3Bbottom%3A16px%3Bright%3A16px%3Bbackground%3A%23138a07%3B'%20%2B%0A%20%20%20%20'color%3A%23fff%3Bpadding%3A8px%2012px%3Bborder-radius%3A8px%3Bfont%3A600%2013px%20-apple-system%2Csans-serif%3B'%20%2B%0A%20%20%20%20'box-shadow%3A0%202px%208px%20rgba(0%2C0%2C0%2C.3)'%3B%0A%20%20document.body.appendChild(hud)%3B%0A%0A%20%20const%20authorOf%20%3D%20(c)%20%3D%3E%20%7B%0A%20%20%20%20const%20el%20%3D%20c.querySelector('.review-panel-entry-user')%3B%0A%20%20%20%20if%20(!el)%20return%20''%3B%0A%20%20%20%20const%20clone%20%3D%20el.cloneNode(true)%3B%20%20%20%20%20%20%20%20%2F%2F%20strip%20color%2Finitial%20badges%20so%20the%20name%20is%20clean%0A%20%20%20%20clone.querySelectorAll('%5Bclass*%3D%22badge%22%5D').forEach(b%20%3D%3E%20b.remove())%3B%0A%20%20%20%20return%20clone.textContent.trim()%3B%0A%20%20%7D%3B%0A%20%20const%20scrapeThread%20%3D%20(entry)%20%3D%3E%20%7B%0A%20%20%20%20let%20comments%20%3D%20%24%24('.review-panel-comment'%2C%20entry)%3B%0A%20%20%20%20if%20(comments.length%20%3D%3D%3D%200)%20comments%20%3D%20%5Bentry%5D%3B%20%20%20%2F%2F%20fallback%20if%20inner%20wrapper%20class%20is%20gone%0A%20%20%20%20const%20messages%20%3D%20comments.map(c%20%3D%3E%20%7B%0A%20%20%20%20%20%20const%20bodyEl%20%3D%20c.querySelector('.review-panel-comment-body')%3B%0A%20%20%20%20%20%20const%20text%20%3D%20(bodyEl%20%3F%20bodyEl.textContent%20%3A%20'').trim()%3B%0A%20%20%20%20%20%20const%20timeEl%20%3D%20c.querySelector('.review-panel-entry-time')%3B%0A%20%20%20%20%20%20return%20%7B%0A%20%20%20%20%20%20%20%20author%3A%20authorOf(c)%2C%0A%20%20%20%20%20%20%20%20time%3A%20timeEl%20%3F%20timeEl.textContent.trim()%20%3A%20''%2C%0A%20%20%20%20%20%20%20%20text%3A%20text%2C%0A%20%20%20%20%20%20%20%20possiblyTruncated%3A%20isTruncated(text)%0A%20%20%20%20%20%20%7D%3B%0A%20%20%20%20%7D).filter(m%20%3D%3E%20m.text)%3B%0A%20%20%20%20return%20%7B%20dataPos%3A%20numAttr(entry%2C%20'data-pos')%2C%20dataTop%3A%20numAttr(entry%2C%20'data-top')%2C%20messages%20%7D%3B%0A%20%20%7D%3B%0A%20%20const%20threadTextLen%20%3D%20(t)%20%3D%3E%20t.messages.reduce((n%2C%20m)%20%3D%3E%20n%20%2B%20m.text.length%2C%200)%3B%0A%0A%20%20%2F%2F%20Accumulators%20keyed%20by%20a%20stable%20identity%20so%20re-rendered%20entries%20de-duplicate.%0A%20%20const%20threadMap%20%3D%20new%20Map()%3B%20%20%20%2F%2F%20key%3A%20anchor%20-%3E%20best%20(most-expanded)%20thread%20seen%0A%20%20const%20changeMap%20%3D%20new%20Map()%3B%20%20%20%2F%2F%20key%3A%20kind%20%2B%20text%20-%3E%20tracked-change%20span%0A%20%20const%20clickedEntries%20%3D%20new%20WeakSet()%3B%0A%20%20%2F%2F%20Entries%20that%20rendered%20with%20text%20but%20yielded%20no%20parsable%20message%3A%20the%20signature%0A%20%20%2F%2F%20of%20Overleaf%20renaming%20an%20inner%20class%20(2026%20redesign%20churn).%20Keyed%20by%20anchor.%0A%20%20const%20unparsed%20%3D%20new%20Set()%3B%0A%0A%20%20%2F%2F%20Collect%20whatever%20the%20review%20panel%20and%20editor%20render%20right%20now%2C%20expanding%20any%0A%20%20%2F%2F%20truncated%20comment%20first.%20Called%20at%20every%20scroll%20stop%3B%20the%20maps%20de-duplicate.%0A%20%20const%20collect%20%3D%20async%20()%20%3D%3E%20%7B%0A%20%20%20%20for%20(let%20pass%20%3D%200%3B%20pass%20%3C%2012%3B%20pass%2B%2B)%20%7B%0A%20%20%20%20%20%20let%20clicked%20%3D%200%3B%0A%20%20%20%20%20%20%24%24('.review-panel-entry-comment'%2C%20panel).forEach(entry%20%3D%3E%20%7B%0A%20%20%20%20%20%20%20%20if%20(clickedEntries.has(entry))%20return%3B%0A%20%20%20%20%20%20%20%20const%20body%20%3D%20entry.querySelector('.review-panel-comment-body')%3B%0A%20%20%20%20%20%20%20%20if%20(body%20%26%26%20isTruncated(body.textContent))%20%7B%0A%20%20%20%20%20%20%20%20%20%20const%20btn%20%3D%20entry.querySelector('.review-panel-expandable-links%20button')%3B%0A%20%20%20%20%20%20%20%20%20%20if%20(btn)%20%7B%20btn.click()%3B%20clickedEntries.add(entry)%3B%20clicked%2B%2B%3B%20%7D%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%7D)%3B%0A%20%20%20%20%20%20if%20(clicked%20%3D%3D%3D%200)%20break%3B%0A%20%20%20%20%20%20await%20sleep(300)%3B%0A%20%20%20%20%7D%0A%20%20%20%20%24%24('.review-panel-entry-comment'%2C%20panel).forEach(entry%20%3D%3E%20%7B%0A%20%20%20%20%20%20const%20t%20%3D%20scrapeThread(entry)%3B%0A%20%20%20%20%20%20if%20(!t.messages.length)%20%7B%0A%20%20%20%20%20%20%20%20if%20((entry.textContent%20%7C%7C%20'').trim())%20%7B%0A%20%20%20%20%20%20%20%20%20%20unparsed.add('p'%20%2B%20t.dataPos%20%2B%20't'%20%2B%20t.dataTop%20%2B%20'n'%20%2B%20(entry.textContent%20%7C%7C%20'').trim().slice(0%2C%2040))%3B%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%20%20return%3B%0A%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20const%20key%20%3D%20t.dataPos%20!%3D%20null%20%3F%20'p'%20%2B%20t.dataPos%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%3A%20t.dataTop%20!%3D%20null%20%3F%20't'%20%2B%20t.dataTop%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%3A%20'x'%20%2B%20(threadMap.size%20%2B%201)%3B%0A%20%20%20%20%20%20const%20prev%20%3D%20threadMap.get(key)%3B%0A%20%20%20%20%20%20if%20(!prev%20%7C%7C%20threadTextLen(t)%20%3E%20threadTextLen(prev))%20threadMap.set(key%2C%20t)%3B%0A%20%20%20%20%7D)%3B%0A%20%20%20%20%24%24('.cm-content%20.ol-cm-change').forEach(s%20%3D%3E%20%7B%0A%20%20%20%20%20%20const%20text%20%3D%20(s.textContent%20%7C%7C%20'').trim().slice(0%2C%202000)%3B%0A%20%20%20%20%20%20if%20(!text)%20return%3B%0A%20%20%20%20%20%20const%20kind%20%3D%20s.className.replace(%2F%5Cs%2B%2Fg%2C%20'%20').trim()%3B%0A%20%20%20%20%20%20const%20key%20%3D%20kind%20%2B%20'%5Cu0000'%20%2B%20text%3B%0A%20%20%20%20%20%20if%20(!changeMap.has(key))%20changeMap.set(key%2C%20%7B%20kind%2C%20text%20%7D)%3B%0A%20%20%20%20%7D)%3B%0A%20%20%7D%3B%0A%0A%20%20%2F%2F%20Scroll%20a%20scrollable%20element%20from%20top%20to%20bottom%2C%20running%20collect()%20at%20each%0A%20%20%2F%2F%20stop%20so%20virtualized%20entries%20render%20and%20get%20captured.%20Restores%20scroll%20after.%0A%20%20%2F%2F%20No-ops%20to%20a%20single%20collect()%20if%20the%20element%20is%20missing%20or%20does%20not%20scroll.%0A%20%20const%20sweep%20%3D%20async%20(el)%20%3D%3E%20%7B%0A%20%20%20%20if%20(!el%20%7C%7C%20el.scrollHeight%20%3C%3D%20el.clientHeight%20%2B%204)%20%7B%20await%20collect()%3B%20return%3B%20%7D%0A%20%20%20%20const%20original%20%3D%20el.scrollTop%3B%0A%20%20%20%20const%20step%20%3D%20Math.max(200%2C%20Math.floor(el.clientHeight%20*%200.8))%3B%0A%20%20%20%20let%20pos%20%3D%200%2C%20guard%20%3D%200%3B%0A%20%20%20%20for%20(%3B%3B)%20%7B%0A%20%20%20%20%20%20el.scrollTop%20%3D%20pos%3B%0A%20%20%20%20%20%20await%20sleep(250)%3B%0A%20%20%20%20%20%20await%20collect()%3B%0A%20%20%20%20%20%20if%20(pos%20%3E%3D%20el.scrollHeight%20-%20el.clientHeight%20%7C%7C%20%2B%2Bguard%20%3E%20600)%20break%3B%0A%20%20%20%20%20%20pos%20%2B%3D%20step%3B%0A%20%20%20%20%7D%0A%20%20%20%20el.scrollTop%20%3D%20original%3B%0A%20%20%20%20await%20sleep(150)%3B%0A%20%20%7D%3B%0A%0A%20%20%2F%2F%20The%20editor%20is%20the%20scroll%20driver%20for%20the%20%22Current%20file%22%20review%20panel%20and%20for%0A%20%20%2F%2F%20the%20tracked-change%20spans%2C%20so%20sweeping%20it%20renders%20every%20anchor%20top%20to%20bottom.%0A%20%20const%20scroller%20%3D%20document.querySelector('.cm-scroller')%3B%0A%20%20await%20sweep(scroller)%3B%0A%20%20%2F%2F%20Belt%20and%20suspenders%3A%20if%20the%20review%20panel%20scrolls%20on%20its%20own%20(e.g.%20an%20Overview%0A%20%20%2F%2F%20layout)%2C%20sweep%20it%20too.%20sweep()%20no-ops%20when%20it%20does%20not%20scroll%2C%20and%20the%20maps%0A%20%20%2F%2F%20make%20the%20overlap%20harmless.%0A%20%20if%20(panel%20!%3D%3D%20scroller)%20await%20sweep(panel)%3B%0A%0A%20%20const%20threads%20%3D%20Array.from(threadMap.values())%0A%20%20%20%20.sort((a%2C%20b)%20%3D%3E%20(a.dataPos%20%3D%3D%20null%20%3F%20Infinity%20%3A%20a.dataPos)%20-%20(b.dataPos%20%3D%3D%20null%20%3F%20Infinity%20%3A%20b.dataPos))%3B%0A%20%20const%20trackedChanges%20%3D%20Array.from(changeMap.values())%3B%0A%0A%20%20%2F%2F%20Identify%20project%20and%20file.%20The%20editor%20breadcrumb%20(file-first%2C%20then%20the%0A%20%20%2F%2F%20section%20path)%20is%20the%20primary%20source.%20Overleaf's%202026%20redesign%20added%20editor%0A%20%20%2F%2F%20file%20tabs%20and%20may%20drop%20or%20restructure%20the%20breadcrumb%2C%20so%20fall%20back%20to%20the%0A%20%20%2F%2F%20selected%20tab%2C%20then%20to%20the%20selected%20file-tree%20entry.%20The%20filename%20filter%0A%20%20%2F%2F%20(something.ext%2C%20no%20spaces%20or%20slashes)%20keeps%20panel%20tabs%20like%20%22Current%20file%22%0A%20%20%2F%2F%20and%20%22Overview%22%20from%20matching.%0A%20%20const%20looksLikeFile%20%3D%20(s)%20%3D%3E%20%2F%5E%5B%5E%5Cs%2F%5C%5C%5D%7B1%2C120%7D%5C.%5BA-Za-z0-9%5D%7B1%2C10%7D%24%2F.test((s%20%7C%7C%20'').trim())%3B%0A%20%20const%20crumbs%20%3D%20%24%24('.ol-cm-breadcrumbs%20div')%3B%0A%20%20let%20file%20%3D%20'unknown'%2C%20fileSource%20%3D%20'none'%3B%0A%20%20if%20(crumbs.length%20%26%26%20crumbs%5B0%5D.textContent.trim())%20%7B%0A%20%20%20%20file%20%3D%20crumbs%5B0%5D.textContent.trim()%3B%0A%20%20%20%20fileSource%20%3D%20'breadcrumbs'%3B%0A%20%20%7D%20else%20%7B%0A%20%20%20%20const%20tabLabel%20%3D%20%24%24('%5Brole%3D%22tab%22%5D%5Baria-selected%3D%22true%22%5D')%0A%20%20%20%20%20%20.map(t%20%3D%3E%20(t.textContent%20%7C%7C%20'').trim()).find(looksLikeFile)%3B%0A%20%20%20%20const%20treeLabel%20%3D%20%24%24('.file-tree%20%5Baria-selected%3D%22true%22%5D%2C%20.file-tree%20.selected')%0A%20%20%20%20%20%20.map(t%20%3D%3E%20(t.textContent%20%7C%7C%20'').trim()).find(looksLikeFile)%3B%0A%20%20%20%20if%20(tabLabel)%20%7B%20file%20%3D%20tabLabel%3B%20fileSource%20%3D%20'editor-tab'%3B%20%7D%0A%20%20%20%20else%20if%20(treeLabel)%20%7B%20file%20%3D%20treeLabel%3B%20fileSource%20%3D%20'file-tree'%3B%20%7D%0A%20%20%7D%0A%20%20const%20project%20%3D%20(document.title%20%7C%7C%20'overleaf')%0A%20%20%20%20.replace(%2F%5Cs*-%5Cs*(Online%20LaTeX%20Editor%5Cs*)%3FOverleaf.*%24%2Fi%2C%20'').trim()%20%7C%7C%20'overleaf'%3B%0A%0A%20%20const%20msgCount%20%3D%20threads.reduce((n%2C%20t)%20%3D%3E%20n%20%2B%20t.messages.length%2C%200)%3B%0A%20%20const%20truncCount%20%3D%20threads.reduce((n%2C%20t)%20%3D%3E%20n%20%2B%20t.messages.filter(m%20%3D%3E%20m.possiblyTruncated).length%2C%200)%3B%0A%0A%20%20%2F%2F%20Selector%20smoke%20report.%20Overleaf%20is%20mid-redesign%20(2026)%2C%20so%20record%20which%0A%20%20%2F%2F%20anchors%20of%20the%20scrape%20actually%20resolved.%20A%20reader%20(or%20Claude)%20can%20tell%20a%0A%20%20%2F%2F%20genuinely%20comment-free%20file%20from%20a%20silently%20broken%20selector.%0A%20%20const%20selectorHealth%20%3D%20%7B%0A%20%20%20%20reviewPanel%3A%20true%2C%0A%20%20%20%20editorScroller%3A%20!!scroller%2C%0A%20%20%20%20breadcrumbs%3A%20crumbs.length%20%3E%200%2C%0A%20%20%20%20fileSource%3A%20fileSource%2C%0A%20%20%20%20threadsParsed%3A%20threads.length%2C%0A%20%20%20%20entriesUnparsed%3A%20unparsed.size%0A%20%20%7D%3B%0A%0A%20%20const%20payload%20%3D%20%7B%0A%20%20%20%20generator%3A%20'overleaf-comments-bookmarklet%20v1.3'%2C%0A%20%20%20%20project%3A%20project%2C%0A%20%20%20%20file%3A%20file%2C%0A%20%20%20%20fileSource%3A%20fileSource%2C%0A%20%20%20%20url%3A%20location.href%2C%0A%20%20%20%20capturedAt%3A%20new%20Date().toISOString()%2C%0A%20%20%20%20threadCount%3A%20threads.length%2C%0A%20%20%20%20messageCount%3A%20msgCount%2C%0A%20%20%20%20selectorHealth%3A%20selectorHealth%2C%0A%20%20%20%20threads%3A%20threads%2C%0A%20%20%20%20trackedChanges%3A%20%7B%0A%20%20%20%20%20%20note%3A%20'swept%20top-to-bottom%20across%20the%20open%20file%3B%20for%20the%20authoritative%20set%2C%20Review%20%3E%20Accept%20in%20Overleaf%20so%20the%20text%20syncs%20via%20git'%2C%0A%20%20%20%20%20%20items%3A%20trackedChanges%0A%20%20%20%20%7D%0A%20%20%7D%3B%0A%0A%20%20%2F%2F%20Download%20the%20JSON%20(and%20copy%20to%20clipboard%20as%20a%20convenience%20fallback).%0A%20%20const%20json%20%3D%20JSON.stringify(payload%2C%20null%2C%202)%3B%0A%20%20let%20slug%20%3D%20(project%20%2B%20'_'%20%2B%20file).toLowerCase().replace(%2F%5B%5Ea-z0-9%5D%2B%2Fg%2C%20'_').replace(%2F%5E_%2B%7C_%2B%24%2Fg%2C%20'')%3B%0A%20%20if%20(!slug)%20slug%20%3D%20'overleaf'%3B%0A%20%20const%20stamp%20%3D%20new%20Date().toISOString().slice(0%2C%2010)%3B%0A%20%20const%20a%20%3D%20document.createElement('a')%3B%0A%20%20a.href%20%3D%20URL.createObjectURL(new%20Blob(%5Bjson%5D%2C%20%7B%20type%3A%20'application%2Fjson'%20%7D))%3B%0A%20%20a.download%20%3D%20'overleaf_comments_'%20%2B%20slug%20%2B%20'_'%20%2B%20stamp%20%2B%20'.json'%3B%0A%20%20document.body.appendChild(a)%3B%0A%20%20a.click()%3B%0A%20%20a.remove()%3B%0A%20%20let%20clip%20%3D%20''%3B%0A%20%20try%20%7B%20await%20navigator.clipboard.writeText(json)%3B%20clip%20%3D%20'%20Also%20copied%20to%20clipboard.'%3B%20%7D%20catch%20(e)%20%7B%7D%0A%0A%20%20hud.remove()%3B%0A%20%20alert('Overleaf%20%E2%86%92%20Claude%3A%20captured%20'%20%2B%20threads.length%20%2B%20'%20comment%20threads%20('%20%2B%20msgCount%20%2B%0A%20%20%20%20'%20messages)%20from%20'%20%2B%20file%20%2B%20'%2C%20swept%20top%20to%20bottom.%5CnDownloaded%20'%20%2B%20a.download%20%2B%0A%20%20%20%20'%20to%20your%20Downloads%20folder.'%20%2B%20clip%20%2B%0A%20%20%20%20(truncCount%20%3F%20'%5Cn%5CnWARNING%3A%20'%20%2B%20truncCount%20%2B%20'%20comment(s)%20may%20still%20be%20cut%20off%20(flagged%20'%20%2B%0A%20%20%20%20%20%20'possiblyTruncated%20in%20the%20file).%20Open%20those%20threads%20fully%20and%20run%20again.'%20%3A%20'')%20%2B%0A%20%20%20%20(unparsed.size%20%3F%20'%5Cn%5CnWARNING%3A%20'%20%2B%20unparsed.size%20%2B%20'%20comment%20entr'%20%2B%20(unparsed.size%20%3D%3D%3D%201%20%3F%20'y'%20%3A%20'ies')%20%2B%0A%20%20%20%20%20%20'%20rendered%20but%20could%20not%20be%20parsed.%20Overleaf%20has%20likely%20changed%20its%20comment%20markup%20since%20this%20'%20%2B%0A%20%20%20%20%20%20'build%20(v1.3%2C%202026-07-14).%20Send%20Claude%20this%20message%20so%20it%20can%20update%20the%20tool.'%20%3A%20'')%20%2B%0A%20%20%20%20(fileSource%20%3D%3D%3D%20'none'%20%3F%20'%5Cn%5CnNOTE%3A%20could%20not%20identify%20the%20open%20filename%20(breadcrumb%2C%20tab%2C%20and%20'%20%2B%0A%20%20%20%20%20%20'file%20tree%20all%20failed)%2C%20so%20the%20JSON%20says%20%22unknown%22.%20The%20comments%20themselves%20are%20still%20captured.'%20%3A%0A%20%20%20%20%20fileSource%20!%3D%3D%20'breadcrumbs'%20%3F%20'%5Cn%5CnNOTE%3A%20filename%20read%20from%20the%20'%20%2B%20fileSource%20%2B%0A%20%20%20%20%20%20'%20because%20the%20editor%20breadcrumb%20was%20not%20found.'%20%3A%20'')%20%2B%0A%20%20%20%20'%5Cn%5CnThis%20captures%20the%20current%20file%20and%20unresolved%20comments%20only.%20For%20other%20files%20click%20again%20'%20%2B%0A%20%20%20%20'after%20switching%3B%20for%20resolved%20comments%20turn%20on%20%22Show%20resolved%20comments%22%20first.')%3B%0A%7D)()%3B%0A">Overleaf → Claude</a></p>
+<p><a class="bml" href="javascript:%2F%2F%20Overleaf%20-%3E%20Claude%20comment%20capture%20bookmarklet%20(source)%20%20v1.4%0A%2F%2F%20Built%202026-07-10%2C%20hardened%202026-07-10%20after%20a%20hostile%20audit%2C%20against%20the%0A%2F%2F%20review-panel%20DOM%20verified%20live%20that%20day%20(classes%3A%20review-panel-entry-comment%2C%0A%2F%2F%20review-panel-comment-body%2C%20review-panel-entry-user%2C%20review-panel-entry-time%2C%0A%2F%2F%20data-pos%2Fdata-top%3B%20editor%20breadcrumb%20ol-cm-breadcrumbs%20is%20file-then-section).%0A%2F%2F%20v1.2%20(2026-07-14)%3A%20sweep%20the%20editor%20top%20to%20bottom%20before%20scraping.%20The%20review%0A%2F%2F%20panel%20virtualizes%20--%20it%20only%20renders%20the%20comment%20entries%20and%20tracked-change%0A%2F%2F%20spans%20whose%20anchor%20line%20is%20near%20the%20current%20viewport%2C%20so%20a%20single%20snapshot%20from%0A%2F%2F%20the%20top%20of%20a%20long%20file%20captured%20only%20the%20first%20screen's%20comments.%20v1.2%20scrolls%0A%2F%2F%20the%20document%20in%20steps%2C%20collects%20at%20each%20stop%2C%20de-duplicates%20entries%20by%20their%0A%2F%2F%20data-pos%20anchor%2C%20and%20restores%20the%20original%20scroll%20position.%20If%20the%20scroller%20is%0A%2F%2F%20not%20found%20it%20falls%20back%20to%20a%20single%20snapshot%2C%20never%20worse%20than%20before.%0A%2F%2F%20v1.3%20(2026-07-14)%3A%20defend%20against%20Overleaf's%202026%20editor%20redesign%20(file%20tabs%2C%0A%2F%2F%20simplified%20toolbar%2C%20Review%20moved%20to%20the%20left%20sidebar)%3A%20filename%20fallback%20chain%2C%0A%2F%2F%20fileSource%20%2B%20selectorHealth%20in%20the%20payload%2C%20parse-failure%20warnings.%0A%2F%2F%20v1.4%20(2026-07-14)%3A%20built%20on%20a%20live%20v1.3%20capture%20of%20the%20redesigned%20editor.%0A%2F%2F%20Evidence%3A%20the%20breadcrumb%20is%20gone%20(breadcrumbs%3Afalse)%2C%20file%20tabs%20exist%20as%0A%2F%2F%20%5Brole%3D%22tab%22%5D%5Baria-selected%3D%22true%22%5D%2C%20and%20a%20tab's%20textContent%20concatenates%0A%2F%2F%20Material-icon%20ligature%20text%20and%20bidi%20format%20chars%20around%20the%20real%20name%0A%2F%2F%20(%22description%22%20%2B%20U%2B200E%20%2B%20%22manuscript.tex%22%20%2B%20%22close%22).%20v1.4%20cleans%20tab%20labels%0A%2F%2F%20(drops%20icon%2Fclose%20elements%2C%20treats%20format%20chars%20as%20separators%2C%20extracts%20the%0A%2F%2F%20token%20bearing%20a%20known%20extension)%20and%20iterates%20every%20file%20tab%20in%20the%20editor's%0A%2F%2F%20tab%20strip%2C%20capturing%20each%20open%20file%20in%20one%20click.%20If%20tab%20switching%20does%20not%0A%2F%2F%20take%20effect%20the%20iteration%20aborts%20safely%20and%20the%20current%20file%20is%20captured%20alone.%0A%2F%2F%20Runs%20only%20when%20clicked%2C%20only%20in%20the%20already-open%20Overleaf%20tab.%20Reads%20the%0A%2F%2F%20rendered%20page%2C%20downloads%20a%20JSON%20file%2C%20sends%20nothing%20anywhere.%0A(async%20()%20%3D%3E%20%7B%0A%20%20const%20%24%24%20%3D%20(sel%2C%20root)%20%3D%3E%20Array.from((root%20%7C%7C%20document).querySelectorAll(sel))%3B%0A%20%20const%20sleep%20%3D%20(ms)%20%3D%3E%20new%20Promise(r%20%3D%3E%20setTimeout(r%2C%20ms))%3B%0A%20%20const%20isTruncated%20%3D%20(t)%20%3D%3E%20%2F(%E2%80%A6%7C%5C.%5C.%5C.)%5Cs*%24%2F.test((t%20%7C%7C%20'').trim())%3B%0A%20%20const%20numAttr%20%3D%20(el%2C%20name)%20%3D%3E%20%7B%0A%20%20%20%20const%20v%20%3D%20el.getAttribute(name)%3B%0A%20%20%20%20const%20n%20%3D%20v%20%3D%3D%20null%20%3F%20NaN%20%3A%20Number(v)%3B%0A%20%20%20%20return%20Number.isFinite(n)%20%3F%20n%20%3A%20null%3B%0A%20%20%7D%3B%0A%0A%20%20const%20panel%20%3D%20document.querySelector('.review-panel-container')%20%7C%7C%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20document.querySelector('%5Bdata-testid%3D%22review-panel%22%5D')%3B%0A%20%20if%20(!panel)%20%7B%0A%20%20%20%20alert('Overleaf%20%E2%86%92%20Claude%3A%20could%20not%20find%20the%20review%20panel.%5Cn%5Cn'%20%2B%0A%20%20%20%20%20%20'Open%20the%20Review%20panel%20first%20(the%20Review%20icon%20in%20the%20left%20sidebar)%2C%20then%20click%20again.%5Cn%5Cn'%20%2B%0A%20%20%20%20%20%20'If%20the%20Review%20panel%20IS%20already%20open%20and%20you%20still%20see%20this%2C%20Overleaf%20may%20have%20changed%20'%20%2B%0A%20%20%20%20%20%20'its%20layout%20since%20this%20tool%20was%20built%20(v1.4%2C%202026-07-14).%20Send%20Claude%20this%20exact%20message%20'%20%2B%0A%20%20%20%20%20%20'so%20it%20can%20update%20the%20tool.')%3B%0A%20%20%20%20return%3B%0A%20%20%7D%0A%0A%20%20%2F%2F%20Small%20on-screen%20note%2C%20because%20the%20sweep%20takes%20a%20few%20seconds%20and%20should%20not%0A%20%20%2F%2F%20look%20like%20the%20click%20did%20nothing.%0A%20%20const%20hud%20%3D%20document.createElement('div')%3B%0A%20%20hud.textContent%20%3D%20'Overleaf%20%E2%86%92%20Claude%3A%20capturing%20comments%E2%80%A6'%3B%0A%20%20hud.style.cssText%20%3D%20'position%3Afixed%3Bz-index%3A2147483647%3Bbottom%3A16px%3Bright%3A16px%3Bbackground%3A%23138a07%3B'%20%2B%0A%20%20%20%20'color%3A%23fff%3Bpadding%3A8px%2012px%3Bborder-radius%3A8px%3Bfont%3A600%2013px%20-apple-system%2Csans-serif%3B'%20%2B%0A%20%20%20%20'box-shadow%3A0%202px%208px%20rgba(0%2C0%2C0%2C.3)'%3B%0A%20%20document.body.appendChild(hud)%3B%0A%0A%20%20const%20authorOf%20%3D%20(c)%20%3D%3E%20%7B%0A%20%20%20%20const%20el%20%3D%20c.querySelector('.review-panel-entry-user')%3B%0A%20%20%20%20if%20(!el)%20return%20''%3B%0A%20%20%20%20const%20clone%20%3D%20el.cloneNode(true)%3B%20%20%20%20%20%20%20%20%2F%2F%20strip%20color%2Finitial%20badges%20so%20the%20name%20is%20clean%0A%20%20%20%20clone.querySelectorAll('%5Bclass*%3D%22badge%22%5D').forEach(b%20%3D%3E%20b.remove())%3B%0A%20%20%20%20return%20clone.textContent.trim()%3B%0A%20%20%7D%3B%0A%20%20const%20scrapeThread%20%3D%20(entry)%20%3D%3E%20%7B%0A%20%20%20%20let%20comments%20%3D%20%24%24('.review-panel-comment'%2C%20entry)%3B%0A%20%20%20%20if%20(comments.length%20%3D%3D%3D%200)%20comments%20%3D%20%5Bentry%5D%3B%20%20%20%2F%2F%20fallback%20if%20inner%20wrapper%20class%20is%20gone%0A%20%20%20%20const%20messages%20%3D%20comments.map(c%20%3D%3E%20%7B%0A%20%20%20%20%20%20const%20bodyEl%20%3D%20c.querySelector('.review-panel-comment-body')%3B%0A%20%20%20%20%20%20const%20text%20%3D%20(bodyEl%20%3F%20bodyEl.textContent%20%3A%20'').trim()%3B%0A%20%20%20%20%20%20const%20timeEl%20%3D%20c.querySelector('.review-panel-entry-time')%3B%0A%20%20%20%20%20%20return%20%7B%0A%20%20%20%20%20%20%20%20author%3A%20authorOf(c)%2C%0A%20%20%20%20%20%20%20%20time%3A%20timeEl%20%3F%20timeEl.textContent.trim()%20%3A%20''%2C%0A%20%20%20%20%20%20%20%20text%3A%20text%2C%0A%20%20%20%20%20%20%20%20possiblyTruncated%3A%20isTruncated(text)%0A%20%20%20%20%20%20%7D%3B%0A%20%20%20%20%7D).filter(m%20%3D%3E%20m.text)%3B%0A%20%20%20%20return%20%7B%20dataPos%3A%20numAttr(entry%2C%20'data-pos')%2C%20dataTop%3A%20numAttr(entry%2C%20'data-top')%2C%20messages%20%7D%3B%0A%20%20%7D%3B%0A%20%20const%20threadTextLen%20%3D%20(t)%20%3D%3E%20t.messages.reduce((n%2C%20m)%20%3D%3E%20n%20%2B%20m.text.length%2C%200)%3B%0A%0A%20%20%2F%2F%20Accumulators%20keyed%20by%20a%20stable%20identity%20so%20re-rendered%20entries%20de-duplicate.%0A%20%20%2F%2F%20Cleared%20between%20files%20when%20iterating%20tabs.%0A%20%20const%20threadMap%20%3D%20new%20Map()%3B%20%20%20%2F%2F%20key%3A%20anchor%20-%3E%20best%20(most-expanded)%20thread%20seen%0A%20%20const%20changeMap%20%3D%20new%20Map()%3B%20%20%20%2F%2F%20key%3A%20kind%20%2B%20text%20-%3E%20tracked-change%20span%0A%20%20const%20clickedEntries%20%3D%20new%20WeakSet()%3B%0A%20%20%2F%2F%20Entries%20that%20rendered%20with%20text%20but%20yielded%20no%20parsable%20message%3A%20the%20signature%0A%20%20%2F%2F%20of%20Overleaf%20renaming%20an%20inner%20class%20(2026%20redesign%20churn).%20Keyed%20by%20anchor.%0A%20%20const%20unparsed%20%3D%20new%20Set()%3B%0A%0A%20%20%2F%2F%20Collect%20whatever%20the%20review%20panel%20and%20editor%20render%20right%20now%2C%20expanding%20any%0A%20%20%2F%2F%20truncated%20comment%20first.%20Called%20at%20every%20scroll%20stop%3B%20the%20maps%20de-duplicate.%0A%20%20const%20collect%20%3D%20async%20()%20%3D%3E%20%7B%0A%20%20%20%20for%20(let%20pass%20%3D%200%3B%20pass%20%3C%2012%3B%20pass%2B%2B)%20%7B%0A%20%20%20%20%20%20let%20clicked%20%3D%200%3B%0A%20%20%20%20%20%20%24%24('.review-panel-entry-comment'%2C%20panel).forEach(entry%20%3D%3E%20%7B%0A%20%20%20%20%20%20%20%20if%20(clickedEntries.has(entry))%20return%3B%0A%20%20%20%20%20%20%20%20const%20body%20%3D%20entry.querySelector('.review-panel-comment-body')%3B%0A%20%20%20%20%20%20%20%20if%20(body%20%26%26%20isTruncated(body.textContent))%20%7B%0A%20%20%20%20%20%20%20%20%20%20const%20btn%20%3D%20entry.querySelector('.review-panel-expandable-links%20button')%3B%0A%20%20%20%20%20%20%20%20%20%20if%20(btn)%20%7B%20btn.click()%3B%20clickedEntries.add(entry)%3B%20clicked%2B%2B%3B%20%7D%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%7D)%3B%0A%20%20%20%20%20%20if%20(clicked%20%3D%3D%3D%200)%20break%3B%0A%20%20%20%20%20%20await%20sleep(300)%3B%0A%20%20%20%20%7D%0A%20%20%20%20%24%24('.review-panel-entry-comment'%2C%20panel).forEach(entry%20%3D%3E%20%7B%0A%20%20%20%20%20%20const%20t%20%3D%20scrapeThread(entry)%3B%0A%20%20%20%20%20%20if%20(!t.messages.length)%20%7B%0A%20%20%20%20%20%20%20%20if%20((entry.textContent%20%7C%7C%20'').trim())%20%7B%0A%20%20%20%20%20%20%20%20%20%20unparsed.add('p'%20%2B%20t.dataPos%20%2B%20't'%20%2B%20t.dataTop%20%2B%20'n'%20%2B%20(entry.textContent%20%7C%7C%20'').trim().slice(0%2C%2040))%3B%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%20%20return%3B%0A%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20const%20key%20%3D%20t.dataPos%20!%3D%20null%20%3F%20'p'%20%2B%20t.dataPos%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%3A%20t.dataTop%20!%3D%20null%20%3F%20't'%20%2B%20t.dataTop%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%3A%20'x'%20%2B%20(threadMap.size%20%2B%201)%3B%0A%20%20%20%20%20%20const%20prev%20%3D%20threadMap.get(key)%3B%0A%20%20%20%20%20%20if%20(!prev%20%7C%7C%20threadTextLen(t)%20%3E%20threadTextLen(prev))%20threadMap.set(key%2C%20t)%3B%0A%20%20%20%20%7D)%3B%0A%20%20%20%20%24%24('.cm-content%20.ol-cm-change').forEach(s%20%3D%3E%20%7B%0A%20%20%20%20%20%20const%20text%20%3D%20(s.textContent%20%7C%7C%20'').trim().slice(0%2C%202000)%3B%0A%20%20%20%20%20%20if%20(!text)%20return%3B%0A%20%20%20%20%20%20const%20kind%20%3D%20s.className.replace(%2F%5Cs%2B%2Fg%2C%20'%20').trim()%3B%0A%20%20%20%20%20%20const%20key%20%3D%20kind%20%2B%20'%5Cu0000'%20%2B%20text%3B%0A%20%20%20%20%20%20if%20(!changeMap.has(key))%20changeMap.set(key%2C%20%7B%20kind%2C%20text%20%7D)%3B%0A%20%20%20%20%7D)%3B%0A%20%20%7D%3B%0A%0A%20%20%2F%2F%20Scroll%20a%20scrollable%20element%20from%20top%20to%20bottom%2C%20running%20collect()%20at%20each%0A%20%20%2F%2F%20stop%20so%20virtualized%20entries%20render%20and%20get%20captured.%20Restores%20scroll%20after.%0A%20%20%2F%2F%20No-ops%20to%20a%20single%20collect()%20if%20the%20element%20is%20missing%20or%20does%20not%20scroll.%0A%20%20const%20sweep%20%3D%20async%20(el)%20%3D%3E%20%7B%0A%20%20%20%20if%20(!el%20%7C%7C%20el.scrollHeight%20%3C%3D%20el.clientHeight%20%2B%204)%20%7B%20await%20collect()%3B%20return%3B%20%7D%0A%20%20%20%20const%20original%20%3D%20el.scrollTop%3B%0A%20%20%20%20const%20step%20%3D%20Math.max(200%2C%20Math.floor(el.clientHeight%20*%200.8))%3B%0A%20%20%20%20let%20pos%20%3D%200%2C%20guard%20%3D%200%3B%0A%20%20%20%20for%20(%3B%3B)%20%7B%0A%20%20%20%20%20%20el.scrollTop%20%3D%20pos%3B%0A%20%20%20%20%20%20await%20sleep(250)%3B%0A%20%20%20%20%20%20await%20collect()%3B%0A%20%20%20%20%20%20if%20(pos%20%3E%3D%20el.scrollHeight%20-%20el.clientHeight%20%7C%7C%20%2B%2Bguard%20%3E%20600)%20break%3B%0A%20%20%20%20%20%20pos%20%2B%3D%20step%3B%0A%20%20%20%20%7D%0A%20%20%20%20el.scrollTop%20%3D%20original%3B%0A%20%20%20%20await%20sleep(150)%3B%0A%20%20%7D%3B%0A%0A%20%20%2F%2F%20---%20Filename%20hygiene%2C%20calibrated%20against%20a%20live%202026-07-14%20capture.%20A%20file%0A%20%20%2F%2F%20tab's%20raw%20textContent%20was%20%22description%3CU%2B200E%3Emanuscript_6_14_2026.texclose%22%3A%0A%20%20%2F%2F%20Material-icon%20ligature%20text%20before%2C%20the%20close%20button's%20ligature%20after%2C%20and%20a%0A%20%20%2F%2F%20bidi%20mark%20gluing%20them%20on.%20cleanLabel%20drops%20icon%2Fbutton%20elements%20from%20a%20clone%0A%20%20%2F%2F%20and%20turns%20Unicode%20format%20chars%20into%20spaces%20so%20the%20filename%20stays%20its%20own%0A%20%20%2F%2F%20token%3B%20fileFromLabel%20then%20extracts%20the%20token%20bearing%20a%20known%20extension%20and%0A%20%20%2F%2F%20trims%20anything%20welded%20after%20it.%0A%20%20const%20FILE_EXT%20%3D%20'%5C%5C.(%3F%3Atex%7Cbib%7Cbst%7Csty%7Ccls%7Ctxt%7Cmd%7Cmarkdown%7Ccsv%7Ctsv%7Cdat%7Cpng%7Cjpeg%7Cjpg%7Cpdf%7Ceps%7Csvg%7Cgif%7Clog%7Cdo%7Cpy%7Crmd%7Crnw%7Cjson%7Cyml%7Cyaml%7Cr)'%3B%0A%20%20const%20cleanLabel%20%3D%20(el)%20%3D%3E%20%7B%0A%20%20%20%20if%20(!el)%20return%20''%3B%0A%20%20%20%20const%20clone%20%3D%20el.cloneNode(true)%3B%0A%20%20%20%20clone.querySelectorAll('button%2C%20%5Brole%3D%22button%22%5D%2C%20%5Baria-hidden%3D%22true%22%5D%2C%20svg%2C%20i%2C%20'%20%2B%0A%20%20%20%20%20%20'%5Bclass*%3D%22icon%22%5D%2C%20%5Bclass*%3D%22symbol%22%5D%2C%20%5Bclass*%3D%22close%22%5D').forEach(n%20%3D%3E%20n.remove())%3B%0A%20%20%20%20return%20clone.textContent.replace(%2F%5B%5Cu200B-%5Cu200F%5Cu2060%5CuFEFF%5D%2Fg%2C%20'%20').trim()%3B%0A%20%20%7D%3B%0A%20%20const%20fileFromLabel%20%3D%20(label)%20%3D%3E%20%7B%0A%20%20%20%20const%20toks%20%3D%20(label%20%7C%7C%20'').split(%2F%5B%5Cs%2F%5C%5C%5D%2B%2F).filter(Boolean)%3B%0A%20%20%20%20const%20strict%20%3D%20new%20RegExp(FILE_EXT%20%2B%20'(%3F!%5BA-Za-z0-9%5D)'%2C%20'i')%3B%20%20%20%2F%2F%20extension%20at%20a%20boundary%0A%20%20%20%20const%20loose%20%3D%20new%20RegExp(FILE_EXT%2C%20'i')%3B%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%2F%2F%20extension%20welded%20to%20junk%0A%20%20%20%20for%20(const%20re%20of%20%5Bstrict%2C%20loose%5D)%20%7B%0A%20%20%20%20%20%20for%20(const%20tok%20of%20toks)%20%7B%0A%20%20%20%20%20%20%20%20const%20m%20%3D%20tok.match(re)%3B%0A%20%20%20%20%20%20%20%20if%20(m)%20return%20tok.slice(0%2C%20m.index%20%2B%20m%5B0%5D.length)%3B%0A%20%20%20%20%20%20%7D%0A%20%20%20%20%7D%0A%20%20%20%20return%20''%3B%0A%20%20%7D%3B%0A%0A%20%20%2F%2F%20Identify%20the%20open%20file.%20The%20pre-redesign%20breadcrumb%20(file-first%2C%20then%20the%0A%20%20%2F%2F%20section%20path)%20still%20wins%20when%20present%3B%20the%20selected%20editor%20tab%20and%20the%0A%20%20%2F%2F%20file-tree%20selection%20are%20the%20redesign-era%20fallbacks.%0A%20%20const%20resolveFile%20%3D%20()%20%3D%3E%20%7B%0A%20%20%20%20const%20crumbs%20%3D%20%24%24('.ol-cm-breadcrumbs%20div')%3B%0A%20%20%20%20if%20(crumbs.length%20%26%26%20crumbs%5B0%5D.textContent.trim())%20%7B%0A%20%20%20%20%20%20return%20%7B%20file%3A%20crumbs%5B0%5D.textContent.trim()%2C%20fileSource%3A%20'breadcrumbs'%2C%20breadcrumbs%3A%20true%20%7D%3B%0A%20%20%20%20%7D%0A%20%20%20%20const%20tabEl%20%3D%20%24%24('%5Brole%3D%22tab%22%5D%5Baria-selected%3D%22true%22%5D').find(t%20%3D%3E%20fileFromLabel(cleanLabel(t)))%3B%0A%20%20%20%20if%20(tabEl)%20return%20%7B%20file%3A%20fileFromLabel(cleanLabel(tabEl))%2C%20fileSource%3A%20'editor-tab'%2C%20breadcrumbs%3A%20false%20%7D%3B%0A%20%20%20%20const%20treeFile%20%3D%20%24%24('.file-tree%20%5Baria-selected%3D%22true%22%5D%2C%20.file-tree%20.selected')%0A%20%20%20%20%20%20.map(t%20%3D%3E%20fileFromLabel(cleanLabel(t))).find(Boolean)%3B%0A%20%20%20%20if%20(treeFile)%20return%20%7B%20file%3A%20treeFile%2C%20fileSource%3A%20'file-tree'%2C%20breadcrumbs%3A%20false%20%7D%3B%0A%20%20%20%20return%20%7B%20file%3A%20'unknown'%2C%20fileSource%3A%20'none'%2C%20breadcrumbs%3A%20false%20%7D%3B%0A%20%20%7D%3B%0A%0A%20%20%2F%2F%20Sweep%20and%20scrape%20the%20file%20that%20is%20open%20right%20now.%0A%20%20const%20captureCurrentFile%20%3D%20async%20()%20%3D%3E%20%7B%0A%20%20%20%20threadMap.clear()%3B%20changeMap.clear()%3B%20unparsed.clear()%3B%0A%20%20%20%20const%20scroller%20%3D%20document.querySelector('.cm-scroller')%3B%0A%20%20%20%20await%20sweep(scroller)%3B%0A%20%20%20%20%2F%2F%20Belt%20and%20suspenders%3A%20if%20the%20review%20panel%20scrolls%20on%20its%20own%20(e.g.%20an%0A%20%20%20%20%2F%2F%20Overview%20layout)%2C%20sweep%20it%20too.%20sweep()%20no-ops%20when%20it%20does%20not%20scroll%2C%0A%20%20%20%20%2F%2F%20and%20the%20maps%20make%20the%20overlap%20harmless.%0A%20%20%20%20if%20(panel%20!%3D%3D%20scroller)%20await%20sweep(panel)%3B%0A%20%20%20%20const%20threads%20%3D%20Array.from(threadMap.values())%0A%20%20%20%20%20%20.sort((a%2C%20b)%20%3D%3E%20(a.dataPos%20%3D%3D%20null%20%3F%20Infinity%20%3A%20a.dataPos)%20-%20(b.dataPos%20%3D%3D%20null%20%3F%20Infinity%20%3A%20b.dataPos))%3B%0A%20%20%20%20const%20id%20%3D%20resolveFile()%3B%0A%20%20%20%20return%20%7B%0A%20%20%20%20%20%20file%3A%20id.file%2C%0A%20%20%20%20%20%20fileSource%3A%20id.fileSource%2C%0A%20%20%20%20%20%20threadCount%3A%20threads.length%2C%0A%20%20%20%20%20%20messageCount%3A%20threads.reduce((n%2C%20t)%20%3D%3E%20n%20%2B%20t.messages.length%2C%200)%2C%0A%20%20%20%20%20%20truncatedCount%3A%20threads.reduce((n%2C%20t)%20%3D%3E%20n%20%2B%20t.messages.filter(m%20%3D%3E%20m.possiblyTruncated).length%2C%200)%2C%0A%20%20%20%20%20%20selectorHealth%3A%20%7B%0A%20%20%20%20%20%20%20%20breadcrumbs%3A%20id.breadcrumbs%2C%0A%20%20%20%20%20%20%20%20editorScroller%3A%20!!scroller%2C%0A%20%20%20%20%20%20%20%20threadsParsed%3A%20threads.length%2C%0A%20%20%20%20%20%20%20%20entriesUnparsed%3A%20unparsed.size%0A%20%20%20%20%20%20%7D%2C%0A%20%20%20%20%20%20threads%3A%20threads%2C%0A%20%20%20%20%20%20trackedChanges%3A%20Array.from(changeMap.values())%0A%20%20%20%20%7D%3B%0A%20%20%7D%3B%0A%0A%20%20%2F%2F%20The%20editor's%20file-tab%20strip%3A%20every%20%5Brole%3Dtab%5D%20whose%20cleaned%20label%20carries%20a%0A%20%20%2F%2F%20filename%2C%20restricted%20to%20the%20tablist%20holding%20the%20selected%20file%20tab%20so%20the%0A%20%20%2F%2F%20review%20panel's%20own%20%22Current%20file%22%2F%22Overview%22%20tabs%20never%20qualify.%0A%20%20const%20fileTabs%20%3D%20()%20%3D%3E%20%7B%0A%20%20%20%20const%20tabs%20%3D%20%24%24('%5Brole%3D%22tab%22%5D').filter(t%20%3D%3E%20fileFromLabel(cleanLabel(t)))%3B%0A%20%20%20%20if%20(!tabs.length)%20return%20%5B%5D%3B%0A%20%20%20%20const%20anchor%20%3D%20tabs.find(t%20%3D%3E%20t.getAttribute('aria-selected')%20%3D%3D%3D%20'true')%20%7C%7C%20tabs%5B0%5D%3B%0A%20%20%20%20const%20list%20%3D%20anchor.closest('%5Brole%3D%22tablist%22%5D')%3B%0A%20%20%20%20return%20list%20%3F%20tabs.filter(t%20%3D%3E%20t.closest('%5Brole%3D%22tablist%22%5D')%20%3D%3D%3D%20list)%20%3A%20tabs%3B%0A%20%20%7D%3B%0A%0A%20%20%2F%2F%20Click%20a%20tab%20and%20wait%20for%20the%20selection%20to%20actually%20move.%20Returns%20false%20if%0A%20%20%2F%2F%20it%20never%20does%2C%20so%20the%20caller%20can%20stop%20iterating%20instead%20of%20re-capturing%20the%0A%20%20%2F%2F%20same%20file%20under%20different%20names.%0A%20%20const%20selectTab%20%3D%20async%20(tab)%20%3D%3E%20%7B%0A%20%20%20%20if%20(tab.getAttribute('aria-selected')%20%3D%3D%3D%20'true')%20return%20true%3B%0A%20%20%20%20tab.click()%3B%0A%20%20%20%20for%20(let%20i%20%3D%200%3B%20i%20%3C%2020%3B%20i%2B%2B)%20%7B%0A%20%20%20%20%20%20await%20sleep(150)%3B%0A%20%20%20%20%20%20if%20(tab.getAttribute('aria-selected')%20%3D%3D%3D%20'true')%20%7B%0A%20%20%20%20%20%20%20%20await%20sleep(700)%3B%20%20%20%2F%2F%20let%20the%20editor%20swap%20documents%20and%20the%20panel%20re-anchor%0A%20%20%20%20%20%20%20%20return%20true%3B%0A%20%20%20%20%20%20%7D%0A%20%20%20%20%7D%0A%20%20%20%20return%20false%3B%0A%20%20%7D%3B%0A%0A%20%20const%20tabs%20%3D%20fileTabs()%3B%0A%20%20const%20files%20%3D%20%5B%5D%3B%0A%20%20let%20tabIteration%20%3D%20tabs.length%20%3E%201%20%3F%20'full'%20%3A%20'single'%3B%0A%20%20if%20(tabs.length%20%3E%201)%20%7B%0A%20%20%20%20const%20original%20%3D%20tabs.find(t%20%3D%3E%20t.getAttribute('aria-selected')%20%3D%3D%3D%20'true')%3B%0A%20%20%20%20for%20(const%20tab%20of%20tabs)%20%7B%0A%20%20%20%20%20%20if%20(!(await%20selectTab(tab)))%20%7B%20tabIteration%20%3D%20'aborted'%3B%20break%3B%20%7D%0A%20%20%20%20%20%20hud.textContent%20%3D%20'Overleaf%20%E2%86%92%20Claude%3A%20capturing%20'%20%2B%20(fileFromLabel(cleanLabel(tab))%20%7C%7C%20'file')%20%2B%20'%E2%80%A6'%3B%0A%20%20%20%20%20%20files.push(await%20captureCurrentFile())%3B%0A%20%20%20%20%7D%0A%20%20%20%20if%20(original)%20await%20selectTab(original)%3B%20%20%20%2F%2F%20put%20the%20user%20back%20where%20they%20were%0A%20%20%7D%0A%20%20if%20(!files.length)%20files.push(await%20captureCurrentFile())%3B%0A%0A%20%20const%20project%20%3D%20(document.title%20%7C%7C%20'overleaf')%0A%20%20%20%20.replace(%2F%5Cs*-%5Cs*(Online%20LaTeX%20Editor%5Cs*)%3FOverleaf.*%24%2Fi%2C%20'').trim()%20%7C%7C%20'overleaf'%3B%0A%20%20const%20totals%20%3D%20files.reduce((s%2C%20f)%20%3D%3E%20(%7B%0A%20%20%20%20threads%3A%20s.threads%20%2B%20f.threadCount%2C%0A%20%20%20%20msgs%3A%20s.msgs%20%2B%20f.messageCount%2C%0A%20%20%20%20trunc%3A%20s.trunc%20%2B%20f.truncatedCount%2C%0A%20%20%20%20unparsed%3A%20s.unparsed%20%2B%20f.selectorHealth.entriesUnparsed%0A%20%20%7D)%2C%20%7B%20threads%3A%200%2C%20msgs%3A%200%2C%20trunc%3A%200%2C%20unparsed%3A%200%20%7D)%3B%0A%20%20const%20unnamed%20%3D%20files.filter(f%20%3D%3E%20f.fileSource%20%3D%3D%3D%20'none').length%3B%0A%0A%20%20const%20payload%20%3D%20%7B%0A%20%20%20%20generator%3A%20'overleaf-comments-bookmarklet%20v1.4'%2C%0A%20%20%20%20project%3A%20project%2C%0A%20%20%20%20url%3A%20location.href%2C%0A%20%20%20%20capturedAt%3A%20new%20Date().toISOString()%2C%0A%20%20%20%20fileCount%3A%20files.length%2C%0A%20%20%20%20tabIteration%3A%20tabIteration%2C%20%20%20%2F%2F%20'full'%20%3D%20every%20open%20tab%2C%20'single'%20%3D%20one%20tab%20open%20or%20no%20tab%20strip%20found%2C%20'aborted'%20%3D%20a%20tab%20refused%20to%20switch%0A%20%20%20%20threadCount%3A%20totals.threads%2C%0A%20%20%20%20messageCount%3A%20totals.msgs%2C%0A%20%20%20%20trackedChangesNote%3A%20'swept%20top-to-bottom%20per%20file%3B%20for%20the%20authoritative%20set%2C%20Review%20%3E%20Accept%20in%20Overleaf%20so%20the%20text%20syncs%20via%20git'%2C%0A%20%20%20%20files%3A%20files%0A%20%20%7D%3B%0A%0A%20%20%2F%2F%20Download%20the%20JSON%20(and%20copy%20to%20clipboard%20as%20a%20convenience%20fallback).%0A%20%20const%20json%20%3D%20JSON.stringify(payload%2C%20null%2C%202)%3B%0A%20%20const%20fileTag%20%3D%20files.length%20%3D%3D%3D%201%20%3F%20files%5B0%5D.file%20%3A%20files.length%20%2B%20'_files'%3B%0A%20%20let%20slug%20%3D%20(project%20%2B%20'_'%20%2B%20fileTag).toLowerCase().replace(%2F%5B%5Ea-z0-9%5D%2B%2Fg%2C%20'_').replace(%2F%5E_%2B%7C_%2B%24%2Fg%2C%20'')%3B%0A%20%20if%20(!slug)%20slug%20%3D%20'overleaf'%3B%0A%20%20const%20stamp%20%3D%20new%20Date().toISOString().slice(0%2C%2010)%3B%0A%20%20const%20a%20%3D%20document.createElement('a')%3B%0A%20%20a.href%20%3D%20URL.createObjectURL(new%20Blob(%5Bjson%5D%2C%20%7B%20type%3A%20'application%2Fjson'%20%7D))%3B%0A%20%20a.download%20%3D%20'overleaf_comments_'%20%2B%20slug%20%2B%20'_'%20%2B%20stamp%20%2B%20'.json'%3B%0A%20%20document.body.appendChild(a)%3B%0A%20%20a.click()%3B%0A%20%20a.remove()%3B%0A%20%20let%20clip%20%3D%20''%3B%0A%20%20try%20%7B%20await%20navigator.clipboard.writeText(json)%3B%20clip%20%3D%20'%20Also%20copied%20to%20clipboard.'%3B%20%7D%20catch%20(e)%20%7B%7D%0A%0A%20%20hud.remove()%3B%0A%20%20const%20perFile%20%3D%20files.map(f%20%3D%3E%20'%20%20'%20%2B%20f.file%20%2B%20'%3A%20'%20%2B%20f.threadCount%20%2B%20'%20thread'%20%2B%0A%20%20%20%20(f.threadCount%20%3D%3D%3D%201%20%3F%20''%20%3A%20's')%20%2B%20'%20('%20%2B%20f.messageCount%20%2B%20'%20message'%20%2B%0A%20%20%20%20(f.messageCount%20%3D%3D%3D%201%20%3F%20''%20%3A%20's')%20%2B%20')').join('%5Cn')%3B%0A%20%20alert('Overleaf%20%E2%86%92%20Claude%3A%20captured%20'%20%2B%20files.length%20%2B%20'%20file'%20%2B%20(files.length%20%3D%3D%3D%201%20%3F%20''%20%3A%20's')%20%2B%0A%20%20%20%20'%2C%20'%20%2B%20totals.threads%20%2B%20'%20comment%20threads%20('%20%2B%20totals.msgs%20%2B%20'%20messages).%5Cn'%20%2B%20perFile%20%2B%0A%20%20%20%20'%5CnDownloaded%20'%20%2B%20a.download%20%2B%20'%20to%20your%20Downloads%20folder.'%20%2B%20clip%20%2B%0A%20%20%20%20(tabIteration%20%3D%3D%3D%20'aborted'%20%3F%20'%5Cn%5CnWARNING%3A%20could%20not%20switch%20between%20file%20tabs%2C%20so%20only%20the%20'%20%2B%0A%20%20%20%20%20%20'files%20listed%20above%20were%20captured.%20Open%20the%20missing%20file%20and%20click%20again.'%20%3A%20'')%20%2B%0A%20%20%20%20(totals.trunc%20%3F%20'%5Cn%5CnWARNING%3A%20'%20%2B%20totals.trunc%20%2B%20'%20comment(s)%20may%20still%20be%20cut%20off%20(flagged%20'%20%2B%0A%20%20%20%20%20%20'possiblyTruncated%20in%20the%20file).%20Open%20those%20threads%20fully%20and%20run%20again.'%20%3A%20'')%20%2B%0A%20%20%20%20(totals.unparsed%20%3F%20'%5Cn%5CnWARNING%3A%20'%20%2B%20totals.unparsed%20%2B%20'%20comment%20entr'%20%2B%20(totals.unparsed%20%3D%3D%3D%201%20%3F%20'y'%20%3A%20'ies')%20%2B%0A%20%20%20%20%20%20'%20rendered%20but%20could%20not%20be%20parsed.%20Overleaf%20has%20likely%20changed%20its%20comment%20markup%20since%20this%20'%20%2B%0A%20%20%20%20%20%20'build%20(v1.4%2C%202026-07-14).%20Send%20Claude%20this%20message%20so%20it%20can%20update%20the%20tool.'%20%3A%20'')%20%2B%0A%20%20%20%20(unnamed%20%3F%20'%5Cn%5CnNOTE%3A%20'%20%2B%20unnamed%20%2B%20'%20capture(s)%20have%20file%20%22unknown%22%20because%20no%20filename%20source%20'%20%2B%0A%20%20%20%20%20%20'(breadcrumb%2C%20tab%2C%20file%20tree)%20resolved.%20The%20comments%20themselves%20are%20still%20captured.'%20%3A%20'')%20%2B%0A%20%20%20%20'%5Cn%5CnThis%20captures%20open%20tabs%20and%20unresolved%20comments%20only.%20For%20files%20not%20open%20in%20a%20tab%2C%20open%20them%20'%20%2B%0A%20%20%20%20'and%20click%20again%3B%20for%20resolved%20comments%20turn%20on%20%22Show%20resolved%20comments%22%20first.')%3B%0A%7D)()%3B%0A">Overleaf → Claude</a></p>
 <p class="note">Don't see a bookmarks bar under the address bar? Press <kbd>Cmd+Shift+B</kbd> (Mac)
 or <kbd>Ctrl+Shift+B</kbd> (Windows/Linux) to show it, then drag.</p>
 <h2>Each time you want Claude to read comments</h2>
 <ol>
   <li>Open the Overleaf project and open the <b>Review</b> panel (the Review icon in the
-      left sidebar) so the comments are visible on the page.</li>
+      left sidebar) so the comments are visible on the page. Open a tab for each file you
+      want captured.</li>
   <li>Click the <b>Overleaf → Claude</b> bookmark.</li>
-  <li>It scrolls the document top to bottom, expands every "show more", captures all comments
-      plus tracked changes, and downloads <code>overleaf_comments_&lt;project&gt;_&lt;date&gt;.json</code> to Downloads.
-      A green note in the corner shows it is working; the scroll position is restored when it finishes.</li>
+  <li>It visits every open file tab, scrolls each file top to bottom, expands every "show more",
+      captures all comments plus tracked changes, and downloads
+      <code>overleaf_comments_&lt;project&gt;_&lt;date&gt;.json</code> to Downloads. A green note in
+      the corner names the file it is working on; you are returned to the tab you started on.</li>
   <li>Using Claude Code? Say "done" and Claude reads the file from Downloads. Otherwise the file
       is plain JSON, open it in any editor or point any script or LLM at it.</li>
 </ol>
 <div class="note">
-<p><b>Limits.</b> Captures the file currently open and the "Current file" tab only, so click once
-per file. Resolved comments are excluded unless you turn on <b>Show resolved comments</b> (inbox
-icon in the Review panel header) first. Comments and tracked changes are now swept across the whole
+<p><b>Limits.</b> Captures open editor tabs only, a file without a tab is skipped, so open a tab per
+file first. Resolved comments are excluded unless you turn on <b>Show resolved comments</b> (inbox
+icon in the Review panel header) first. Comments and tracked changes are swept across each whole
 file; for the authoritative tracked-change set you can still use <b>Review → Accept</b> in Overleaf,
 which syncs the text through git. If a comment is flagged <code>possiblyTruncated</code> in the file,
 open that thread fully and run again. Overleaf is rolling out an editor redesign (tabs, simplified
-toolbar), so the bookmarklet now checks its own selectors: if comments render but cannot be parsed,
-or the filename cannot be found, the finish alert says so. When you see such a warning, ask Claude
-to patch the tool.</p>
+toolbar), so the bookmarklet checks its own selectors: if comments render but cannot be parsed, the
+filename cannot be found, or a tab refuses to switch, the finish alert says so. When you see such a
+warning, ask Claude to patch the tool.</p>
 <p><b>Safety.</b> Runs only when clicked, only in your open tab, reads only what is on the page,
 downloads locally, sends nothing anywhere, stores no credential.</p>
 </div>
@@ -47,7 +49,7 @@ downloads locally, sends nothing anywhere, stores no credential.</p>
 <p>Some browser setups block <code>javascript:</code> bookmarks. Then paste the script below into
 the DevTools <b>Console</b> (F12) on the Overleaf tab and press Enter. Chrome may ask you to type
 <code>allow pasting</code> first.</p>
-<textarea readonly>// Overleaf -&gt; Claude comment capture bookmarklet (source)  v1.3
+<textarea readonly>// Overleaf -&gt; Claude comment capture bookmarklet (source)  v1.4
 // Built 2026-07-10, hardened 2026-07-10 after a hostile audit, against the
 // review-panel DOM verified live that day (classes: review-panel-entry-comment,
 // review-panel-comment-body, review-panel-entry-user, review-panel-entry-time,
@@ -60,11 +62,17 @@ the DevTools <b>Console</b> (F12) on the Overleaf tab and press Enter. Chrome ma
 // data-pos anchor, and restores the original scroll position. If the scroller is
 // not found it falls back to a single snapshot, never worse than before.
 // v1.3 (2026-07-14): defend against Overleaf's 2026 editor redesign (file tabs,
-// simplified toolbar, Review moved to the left sidebar). The filename now falls
-// back from the breadcrumb to the selected editor tab to the selected file-tree
-// entry, the payload records which source won (fileSource) plus a selectorHealth
-// block, and the final alert warns when comment entries rendered but could not be
-// parsed -- the signature of a class-name change -- instead of failing silently.
+// simplified toolbar, Review moved to the left sidebar): filename fallback chain,
+// fileSource + selectorHealth in the payload, parse-failure warnings.
+// v1.4 (2026-07-14): built on a live v1.3 capture of the redesigned editor.
+// Evidence: the breadcrumb is gone (breadcrumbs:false), file tabs exist as
+// [role="tab"][aria-selected="true"], and a tab's textContent concatenates
+// Material-icon ligature text and bidi format chars around the real name
+// ("description" + U+200E + "manuscript.tex" + "close"). v1.4 cleans tab labels
+// (drops icon/close elements, treats format chars as separators, extracts the
+// token bearing a known extension) and iterates every file tab in the editor's
+// tab strip, capturing each open file in one click. If tab switching does not
+// take effect the iteration aborts safely and the current file is captured alone.
 // Runs only when clicked, only in the already-open Overleaf tab. Reads the
 // rendered page, downloads a JSON file, sends nothing anywhere.
 (async () =&gt; {
@@ -83,7 +91,7 @@ the DevTools <b>Console</b> (F12) on the Overleaf tab and press Enter. Chrome ma
     alert('Overleaf → Claude: could not find the review panel.\n\n' +
       'Open the Review panel first (the Review icon in the left sidebar), then click again.\n\n' +
       'If the Review panel IS already open and you still see this, Overleaf may have changed ' +
-      'its layout since this tool was built (v1.3, 2026-07-14). Send Claude this exact message ' +
+      'its layout since this tool was built (v1.4, 2026-07-14). Send Claude this exact message ' +
       'so it can update the tool.');
     return;
   }
@@ -123,6 +131,7 @@ the DevTools <b>Console</b> (F12) on the Overleaf tab and press Enter. Chrome ma
   const threadTextLen = (t) =&gt; t.messages.reduce((n, m) =&gt; n + m.text.length, 0);
 
   // Accumulators keyed by a stable identity so re-rendered entries de-duplicate.
+  // Cleared between files when iterating tabs.
   const threadMap = new Map();   // key: anchor -&gt; best (most-expanded) thread seen
   const changeMap = new Map();   // key: kind + text -&gt; tracked-change span
   const clickedEntries = new WeakSet();
@@ -188,77 +197,147 @@ the DevTools <b>Console</b> (F12) on the Overleaf tab and press Enter. Chrome ma
     await sleep(150);
   };
 
-  // The editor is the scroll driver for the "Current file" review panel and for
-  // the tracked-change spans, so sweeping it renders every anchor top to bottom.
-  const scroller = document.querySelector('.cm-scroller');
-  await sweep(scroller);
-  // Belt and suspenders: if the review panel scrolls on its own (e.g. an Overview
-  // layout), sweep it too. sweep() no-ops when it does not scroll, and the maps
-  // make the overlap harmless.
-  if (panel !== scroller) await sweep(panel);
-
-  const threads = Array.from(threadMap.values())
-    .sort((a, b) =&gt; (a.dataPos == null ? Infinity : a.dataPos) - (b.dataPos == null ? Infinity : b.dataPos));
-  const trackedChanges = Array.from(changeMap.values());
-
-  // Identify project and file. The editor breadcrumb (file-first, then the
-  // section path) is the primary source. Overleaf's 2026 redesign added editor
-  // file tabs and may drop or restructure the breadcrumb, so fall back to the
-  // selected tab, then to the selected file-tree entry. The filename filter
-  // (something.ext, no spaces or slashes) keeps panel tabs like "Current file"
-  // and "Overview" from matching.
-  const looksLikeFile = (s) =&gt; /^[^\s/\\]{1,120}\.[A-Za-z0-9]{1,10}$/.test((s || '').trim());
-  const crumbs = $$('.ol-cm-breadcrumbs div');
-  let file = 'unknown', fileSource = 'none';
-  if (crumbs.length &amp;&amp; crumbs[0].textContent.trim()) {
-    file = crumbs[0].textContent.trim();
-    fileSource = 'breadcrumbs';
-  } else {
-    const tabLabel = $$('[role="tab"][aria-selected="true"]')
-      .map(t =&gt; (t.textContent || '').trim()).find(looksLikeFile);
-    const treeLabel = $$('.file-tree [aria-selected="true"], .file-tree .selected')
-      .map(t =&gt; (t.textContent || '').trim()).find(looksLikeFile);
-    if (tabLabel) { file = tabLabel; fileSource = 'editor-tab'; }
-    else if (treeLabel) { file = treeLabel; fileSource = 'file-tree'; }
-  }
-  const project = (document.title || 'overleaf')
-    .replace(/\s*-\s*(Online LaTeX Editor\s*)?Overleaf.*$/i, '').trim() || 'overleaf';
-
-  const msgCount = threads.reduce((n, t) =&gt; n + t.messages.length, 0);
-  const truncCount = threads.reduce((n, t) =&gt; n + t.messages.filter(m =&gt; m.possiblyTruncated).length, 0);
-
-  // Selector smoke report. Overleaf is mid-redesign (2026), so record which
-  // anchors of the scrape actually resolved. A reader (or Claude) can tell a
-  // genuinely comment-free file from a silently broken selector.
-  const selectorHealth = {
-    reviewPanel: true,
-    editorScroller: !!scroller,
-    breadcrumbs: crumbs.length &gt; 0,
-    fileSource: fileSource,
-    threadsParsed: threads.length,
-    entriesUnparsed: unparsed.size
+  // --- Filename hygiene, calibrated against a live 2026-07-14 capture. A file
+  // tab's raw textContent was "description&lt;U+200E&gt;manuscript_6_14_2026.texclose":
+  // Material-icon ligature text before, the close button's ligature after, and a
+  // bidi mark gluing them on. cleanLabel drops icon/button elements from a clone
+  // and turns Unicode format chars into spaces so the filename stays its own
+  // token; fileFromLabel then extracts the token bearing a known extension and
+  // trims anything welded after it.
+  const FILE_EXT = '\\.(?:tex|bib|bst|sty|cls|txt|md|markdown|csv|tsv|dat|png|jpeg|jpg|pdf|eps|svg|gif|log|do|py|rmd|rnw|json|yml|yaml|r)';
+  const cleanLabel = (el) =&gt; {
+    if (!el) return '';
+    const clone = el.cloneNode(true);
+    clone.querySelectorAll('button, [role="button"], [aria-hidden="true"], svg, i, ' +
+      '[class*="icon"], [class*="symbol"], [class*="close"]').forEach(n =&gt; n.remove());
+    return clone.textContent.replace(/[\u200B-\u200F\u2060\uFEFF]/g, ' ').trim();
+  };
+  const fileFromLabel = (label) =&gt; {
+    const toks = (label || '').split(/[\s/\\]+/).filter(Boolean);
+    const strict = new RegExp(FILE_EXT + '(?![A-Za-z0-9])', 'i');   // extension at a boundary
+    const loose = new RegExp(FILE_EXT, 'i');                        // extension welded to junk
+    for (const re of [strict, loose]) {
+      for (const tok of toks) {
+        const m = tok.match(re);
+        if (m) return tok.slice(0, m.index + m[0].length);
+      }
+    }
+    return '';
   };
 
+  // Identify the open file. The pre-redesign breadcrumb (file-first, then the
+  // section path) still wins when present; the selected editor tab and the
+  // file-tree selection are the redesign-era fallbacks.
+  const resolveFile = () =&gt; {
+    const crumbs = $$('.ol-cm-breadcrumbs div');
+    if (crumbs.length &amp;&amp; crumbs[0].textContent.trim()) {
+      return { file: crumbs[0].textContent.trim(), fileSource: 'breadcrumbs', breadcrumbs: true };
+    }
+    const tabEl = $$('[role="tab"][aria-selected="true"]').find(t =&gt; fileFromLabel(cleanLabel(t)));
+    if (tabEl) return { file: fileFromLabel(cleanLabel(tabEl)), fileSource: 'editor-tab', breadcrumbs: false };
+    const treeFile = $$('.file-tree [aria-selected="true"], .file-tree .selected')
+      .map(t =&gt; fileFromLabel(cleanLabel(t))).find(Boolean);
+    if (treeFile) return { file: treeFile, fileSource: 'file-tree', breadcrumbs: false };
+    return { file: 'unknown', fileSource: 'none', breadcrumbs: false };
+  };
+
+  // Sweep and scrape the file that is open right now.
+  const captureCurrentFile = async () =&gt; {
+    threadMap.clear(); changeMap.clear(); unparsed.clear();
+    const scroller = document.querySelector('.cm-scroller');
+    await sweep(scroller);
+    // Belt and suspenders: if the review panel scrolls on its own (e.g. an
+    // Overview layout), sweep it too. sweep() no-ops when it does not scroll,
+    // and the maps make the overlap harmless.
+    if (panel !== scroller) await sweep(panel);
+    const threads = Array.from(threadMap.values())
+      .sort((a, b) =&gt; (a.dataPos == null ? Infinity : a.dataPos) - (b.dataPos == null ? Infinity : b.dataPos));
+    const id = resolveFile();
+    return {
+      file: id.file,
+      fileSource: id.fileSource,
+      threadCount: threads.length,
+      messageCount: threads.reduce((n, t) =&gt; n + t.messages.length, 0),
+      truncatedCount: threads.reduce((n, t) =&gt; n + t.messages.filter(m =&gt; m.possiblyTruncated).length, 0),
+      selectorHealth: {
+        breadcrumbs: id.breadcrumbs,
+        editorScroller: !!scroller,
+        threadsParsed: threads.length,
+        entriesUnparsed: unparsed.size
+      },
+      threads: threads,
+      trackedChanges: Array.from(changeMap.values())
+    };
+  };
+
+  // The editor's file-tab strip: every [role=tab] whose cleaned label carries a
+  // filename, restricted to the tablist holding the selected file tab so the
+  // review panel's own "Current file"/"Overview" tabs never qualify.
+  const fileTabs = () =&gt; {
+    const tabs = $$('[role="tab"]').filter(t =&gt; fileFromLabel(cleanLabel(t)));
+    if (!tabs.length) return [];
+    const anchor = tabs.find(t =&gt; t.getAttribute('aria-selected') === 'true') || tabs[0];
+    const list = anchor.closest('[role="tablist"]');
+    return list ? tabs.filter(t =&gt; t.closest('[role="tablist"]') === list) : tabs;
+  };
+
+  // Click a tab and wait for the selection to actually move. Returns false if
+  // it never does, so the caller can stop iterating instead of re-capturing the
+  // same file under different names.
+  const selectTab = async (tab) =&gt; {
+    if (tab.getAttribute('aria-selected') === 'true') return true;
+    tab.click();
+    for (let i = 0; i &lt; 20; i++) {
+      await sleep(150);
+      if (tab.getAttribute('aria-selected') === 'true') {
+        await sleep(700);   // let the editor swap documents and the panel re-anchor
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const tabs = fileTabs();
+  const files = [];
+  let tabIteration = tabs.length &gt; 1 ? 'full' : 'single';
+  if (tabs.length &gt; 1) {
+    const original = tabs.find(t =&gt; t.getAttribute('aria-selected') === 'true');
+    for (const tab of tabs) {
+      if (!(await selectTab(tab))) { tabIteration = 'aborted'; break; }
+      hud.textContent = 'Overleaf → Claude: capturing ' + (fileFromLabel(cleanLabel(tab)) || 'file') + '…';
+      files.push(await captureCurrentFile());
+    }
+    if (original) await selectTab(original);   // put the user back where they were
+  }
+  if (!files.length) files.push(await captureCurrentFile());
+
+  const project = (document.title || 'overleaf')
+    .replace(/\s*-\s*(Online LaTeX Editor\s*)?Overleaf.*$/i, '').trim() || 'overleaf';
+  const totals = files.reduce((s, f) =&gt; ({
+    threads: s.threads + f.threadCount,
+    msgs: s.msgs + f.messageCount,
+    trunc: s.trunc + f.truncatedCount,
+    unparsed: s.unparsed + f.selectorHealth.entriesUnparsed
+  }), { threads: 0, msgs: 0, trunc: 0, unparsed: 0 });
+  const unnamed = files.filter(f =&gt; f.fileSource === 'none').length;
+
   const payload = {
-    generator: 'overleaf-comments-bookmarklet v1.3',
+    generator: 'overleaf-comments-bookmarklet v1.4',
     project: project,
-    file: file,
-    fileSource: fileSource,
     url: location.href,
     capturedAt: new Date().toISOString(),
-    threadCount: threads.length,
-    messageCount: msgCount,
-    selectorHealth: selectorHealth,
-    threads: threads,
-    trackedChanges: {
-      note: 'swept top-to-bottom across the open file; for the authoritative set, Review &gt; Accept in Overleaf so the text syncs via git',
-      items: trackedChanges
-    }
+    fileCount: files.length,
+    tabIteration: tabIteration,   // 'full' = every open tab, 'single' = one tab open or no tab strip found, 'aborted' = a tab refused to switch
+    threadCount: totals.threads,
+    messageCount: totals.msgs,
+    trackedChangesNote: 'swept top-to-bottom per file; for the authoritative set, Review &gt; Accept in Overleaf so the text syncs via git',
+    files: files
   };
 
   // Download the JSON (and copy to clipboard as a convenience fallback).
   const json = JSON.stringify(payload, null, 2);
-  let slug = (project + '_' + file).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  const fileTag = files.length === 1 ? files[0].file : files.length + '_files';
+  let slug = (project + '_' + fileTag).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
   if (!slug) slug = 'overleaf';
   const stamp = new Date().toISOString().slice(0, 10);
   const a = document.createElement('a');
@@ -271,20 +350,23 @@ the DevTools <b>Console</b> (F12) on the Overleaf tab and press Enter. Chrome ma
   try { await navigator.clipboard.writeText(json); clip = ' Also copied to clipboard.'; } catch (e) {}
 
   hud.remove();
-  alert('Overleaf → Claude: captured ' + threads.length + ' comment threads (' + msgCount +
-    ' messages) from ' + file + ', swept top to bottom.\nDownloaded ' + a.download +
-    ' to your Downloads folder.' + clip +
-    (truncCount ? '\n\nWARNING: ' + truncCount + ' comment(s) may still be cut off (flagged ' +
+  const perFile = files.map(f =&gt; '  ' + f.file + ': ' + f.threadCount + ' thread' +
+    (f.threadCount === 1 ? '' : 's') + ' (' + f.messageCount + ' message' +
+    (f.messageCount === 1 ? '' : 's') + ')').join('\n');
+  alert('Overleaf → Claude: captured ' + files.length + ' file' + (files.length === 1 ? '' : 's') +
+    ', ' + totals.threads + ' comment threads (' + totals.msgs + ' messages).\n' + perFile +
+    '\nDownloaded ' + a.download + ' to your Downloads folder.' + clip +
+    (tabIteration === 'aborted' ? '\n\nWARNING: could not switch between file tabs, so only the ' +
+      'files listed above were captured. Open the missing file and click again.' : '') +
+    (totals.trunc ? '\n\nWARNING: ' + totals.trunc + ' comment(s) may still be cut off (flagged ' +
       'possiblyTruncated in the file). Open those threads fully and run again.' : '') +
-    (unparsed.size ? '\n\nWARNING: ' + unparsed.size + ' comment entr' + (unparsed.size === 1 ? 'y' : 'ies') +
+    (totals.unparsed ? '\n\nWARNING: ' + totals.unparsed + ' comment entr' + (totals.unparsed === 1 ? 'y' : 'ies') +
       ' rendered but could not be parsed. Overleaf has likely changed its comment markup since this ' +
-      'build (v1.3, 2026-07-14). Send Claude this message so it can update the tool.' : '') +
-    (fileSource === 'none' ? '\n\nNOTE: could not identify the open filename (breadcrumb, tab, and ' +
-      'file tree all failed), so the JSON says "unknown". The comments themselves are still captured.' :
-     fileSource !== 'breadcrumbs' ? '\n\nNOTE: filename read from the ' + fileSource +
-      ' because the editor breadcrumb was not found.' : '') +
-    '\n\nThis captures the current file and unresolved comments only. For other files click again ' +
-    'after switching; for resolved comments turn on "Show resolved comments" first.');
+      'build (v1.4, 2026-07-14). Send Claude this message so it can update the tool.' : '') +
+    (unnamed ? '\n\nNOTE: ' + unnamed + ' capture(s) have file "unknown" because no filename source ' +
+      '(breadcrumb, tab, file tree) resolved. The comments themselves are still captured.' : '') +
+    '\n\nThis captures open tabs and unresolved comments only. For files not open in a tab, open them ' +
+    'and click again; for resolved comments turn on "Show resolved comments" first.');
 })();
 </textarea>
 </body>

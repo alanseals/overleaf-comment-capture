@@ -1,4 +1,4 @@
-// Overleaf -> Claude comment capture bookmarklet (source)  v1.3
+// Overleaf -> Claude comment capture bookmarklet (source)  v1.4
 // Built 2026-07-10, hardened 2026-07-10 after a hostile audit, against the
 // review-panel DOM verified live that day (classes: review-panel-entry-comment,
 // review-panel-comment-body, review-panel-entry-user, review-panel-entry-time,
@@ -11,11 +11,17 @@
 // data-pos anchor, and restores the original scroll position. If the scroller is
 // not found it falls back to a single snapshot, never worse than before.
 // v1.3 (2026-07-14): defend against Overleaf's 2026 editor redesign (file tabs,
-// simplified toolbar, Review moved to the left sidebar). The filename now falls
-// back from the breadcrumb to the selected editor tab to the selected file-tree
-// entry, the payload records which source won (fileSource) plus a selectorHealth
-// block, and the final alert warns when comment entries rendered but could not be
-// parsed -- the signature of a class-name change -- instead of failing silently.
+// simplified toolbar, Review moved to the left sidebar): filename fallback chain,
+// fileSource + selectorHealth in the payload, parse-failure warnings.
+// v1.4 (2026-07-14): built on a live v1.3 capture of the redesigned editor.
+// Evidence: the breadcrumb is gone (breadcrumbs:false), file tabs exist as
+// [role="tab"][aria-selected="true"], and a tab's textContent concatenates
+// Material-icon ligature text and bidi format chars around the real name
+// ("description" + U+200E + "manuscript.tex" + "close"). v1.4 cleans tab labels
+// (drops icon/close elements, treats format chars as separators, extracts the
+// token bearing a known extension) and iterates every file tab in the editor's
+// tab strip, capturing each open file in one click. If tab switching does not
+// take effect the iteration aborts safely and the current file is captured alone.
 // Runs only when clicked, only in the already-open Overleaf tab. Reads the
 // rendered page, downloads a JSON file, sends nothing anywhere.
 (async () => {
@@ -34,7 +40,7 @@
     alert('Overleaf → Claude: could not find the review panel.\n\n' +
       'Open the Review panel first (the Review icon in the left sidebar), then click again.\n\n' +
       'If the Review panel IS already open and you still see this, Overleaf may have changed ' +
-      'its layout since this tool was built (v1.3, 2026-07-14). Send Claude this exact message ' +
+      'its layout since this tool was built (v1.4, 2026-07-14). Send Claude this exact message ' +
       'so it can update the tool.');
     return;
   }
@@ -74,6 +80,7 @@
   const threadTextLen = (t) => t.messages.reduce((n, m) => n + m.text.length, 0);
 
   // Accumulators keyed by a stable identity so re-rendered entries de-duplicate.
+  // Cleared between files when iterating tabs.
   const threadMap = new Map();   // key: anchor -> best (most-expanded) thread seen
   const changeMap = new Map();   // key: kind + text -> tracked-change span
   const clickedEntries = new WeakSet();
@@ -139,77 +146,147 @@
     await sleep(150);
   };
 
-  // The editor is the scroll driver for the "Current file" review panel and for
-  // the tracked-change spans, so sweeping it renders every anchor top to bottom.
-  const scroller = document.querySelector('.cm-scroller');
-  await sweep(scroller);
-  // Belt and suspenders: if the review panel scrolls on its own (e.g. an Overview
-  // layout), sweep it too. sweep() no-ops when it does not scroll, and the maps
-  // make the overlap harmless.
-  if (panel !== scroller) await sweep(panel);
-
-  const threads = Array.from(threadMap.values())
-    .sort((a, b) => (a.dataPos == null ? Infinity : a.dataPos) - (b.dataPos == null ? Infinity : b.dataPos));
-  const trackedChanges = Array.from(changeMap.values());
-
-  // Identify project and file. The editor breadcrumb (file-first, then the
-  // section path) is the primary source. Overleaf's 2026 redesign added editor
-  // file tabs and may drop or restructure the breadcrumb, so fall back to the
-  // selected tab, then to the selected file-tree entry. The filename filter
-  // (something.ext, no spaces or slashes) keeps panel tabs like "Current file"
-  // and "Overview" from matching.
-  const looksLikeFile = (s) => /^[^\s/\\]{1,120}\.[A-Za-z0-9]{1,10}$/.test((s || '').trim());
-  const crumbs = $$('.ol-cm-breadcrumbs div');
-  let file = 'unknown', fileSource = 'none';
-  if (crumbs.length && crumbs[0].textContent.trim()) {
-    file = crumbs[0].textContent.trim();
-    fileSource = 'breadcrumbs';
-  } else {
-    const tabLabel = $$('[role="tab"][aria-selected="true"]')
-      .map(t => (t.textContent || '').trim()).find(looksLikeFile);
-    const treeLabel = $$('.file-tree [aria-selected="true"], .file-tree .selected')
-      .map(t => (t.textContent || '').trim()).find(looksLikeFile);
-    if (tabLabel) { file = tabLabel; fileSource = 'editor-tab'; }
-    else if (treeLabel) { file = treeLabel; fileSource = 'file-tree'; }
-  }
-  const project = (document.title || 'overleaf')
-    .replace(/\s*-\s*(Online LaTeX Editor\s*)?Overleaf.*$/i, '').trim() || 'overleaf';
-
-  const msgCount = threads.reduce((n, t) => n + t.messages.length, 0);
-  const truncCount = threads.reduce((n, t) => n + t.messages.filter(m => m.possiblyTruncated).length, 0);
-
-  // Selector smoke report. Overleaf is mid-redesign (2026), so record which
-  // anchors of the scrape actually resolved. A reader (or Claude) can tell a
-  // genuinely comment-free file from a silently broken selector.
-  const selectorHealth = {
-    reviewPanel: true,
-    editorScroller: !!scroller,
-    breadcrumbs: crumbs.length > 0,
-    fileSource: fileSource,
-    threadsParsed: threads.length,
-    entriesUnparsed: unparsed.size
+  // --- Filename hygiene, calibrated against a live 2026-07-14 capture. A file
+  // tab's raw textContent was "description<U+200E>manuscript_6_14_2026.texclose":
+  // Material-icon ligature text before, the close button's ligature after, and a
+  // bidi mark gluing them on. cleanLabel drops icon/button elements from a clone
+  // and turns Unicode format chars into spaces so the filename stays its own
+  // token; fileFromLabel then extracts the token bearing a known extension and
+  // trims anything welded after it.
+  const FILE_EXT = '\\.(?:tex|bib|bst|sty|cls|txt|md|markdown|csv|tsv|dat|png|jpeg|jpg|pdf|eps|svg|gif|log|do|py|rmd|rnw|json|yml|yaml|r)';
+  const cleanLabel = (el) => {
+    if (!el) return '';
+    const clone = el.cloneNode(true);
+    clone.querySelectorAll('button, [role="button"], [aria-hidden="true"], svg, i, ' +
+      '[class*="icon"], [class*="symbol"], [class*="close"]').forEach(n => n.remove());
+    return clone.textContent.replace(/[\u200B-\u200F\u2060\uFEFF]/g, ' ').trim();
+  };
+  const fileFromLabel = (label) => {
+    const toks = (label || '').split(/[\s/\\]+/).filter(Boolean);
+    const strict = new RegExp(FILE_EXT + '(?![A-Za-z0-9])', 'i');   // extension at a boundary
+    const loose = new RegExp(FILE_EXT, 'i');                        // extension welded to junk
+    for (const re of [strict, loose]) {
+      for (const tok of toks) {
+        const m = tok.match(re);
+        if (m) return tok.slice(0, m.index + m[0].length);
+      }
+    }
+    return '';
   };
 
+  // Identify the open file. The pre-redesign breadcrumb (file-first, then the
+  // section path) still wins when present; the selected editor tab and the
+  // file-tree selection are the redesign-era fallbacks.
+  const resolveFile = () => {
+    const crumbs = $$('.ol-cm-breadcrumbs div');
+    if (crumbs.length && crumbs[0].textContent.trim()) {
+      return { file: crumbs[0].textContent.trim(), fileSource: 'breadcrumbs', breadcrumbs: true };
+    }
+    const tabEl = $$('[role="tab"][aria-selected="true"]').find(t => fileFromLabel(cleanLabel(t)));
+    if (tabEl) return { file: fileFromLabel(cleanLabel(tabEl)), fileSource: 'editor-tab', breadcrumbs: false };
+    const treeFile = $$('.file-tree [aria-selected="true"], .file-tree .selected')
+      .map(t => fileFromLabel(cleanLabel(t))).find(Boolean);
+    if (treeFile) return { file: treeFile, fileSource: 'file-tree', breadcrumbs: false };
+    return { file: 'unknown', fileSource: 'none', breadcrumbs: false };
+  };
+
+  // Sweep and scrape the file that is open right now.
+  const captureCurrentFile = async () => {
+    threadMap.clear(); changeMap.clear(); unparsed.clear();
+    const scroller = document.querySelector('.cm-scroller');
+    await sweep(scroller);
+    // Belt and suspenders: if the review panel scrolls on its own (e.g. an
+    // Overview layout), sweep it too. sweep() no-ops when it does not scroll,
+    // and the maps make the overlap harmless.
+    if (panel !== scroller) await sweep(panel);
+    const threads = Array.from(threadMap.values())
+      .sort((a, b) => (a.dataPos == null ? Infinity : a.dataPos) - (b.dataPos == null ? Infinity : b.dataPos));
+    const id = resolveFile();
+    return {
+      file: id.file,
+      fileSource: id.fileSource,
+      threadCount: threads.length,
+      messageCount: threads.reduce((n, t) => n + t.messages.length, 0),
+      truncatedCount: threads.reduce((n, t) => n + t.messages.filter(m => m.possiblyTruncated).length, 0),
+      selectorHealth: {
+        breadcrumbs: id.breadcrumbs,
+        editorScroller: !!scroller,
+        threadsParsed: threads.length,
+        entriesUnparsed: unparsed.size
+      },
+      threads: threads,
+      trackedChanges: Array.from(changeMap.values())
+    };
+  };
+
+  // The editor's file-tab strip: every [role=tab] whose cleaned label carries a
+  // filename, restricted to the tablist holding the selected file tab so the
+  // review panel's own "Current file"/"Overview" tabs never qualify.
+  const fileTabs = () => {
+    const tabs = $$('[role="tab"]').filter(t => fileFromLabel(cleanLabel(t)));
+    if (!tabs.length) return [];
+    const anchor = tabs.find(t => t.getAttribute('aria-selected') === 'true') || tabs[0];
+    const list = anchor.closest('[role="tablist"]');
+    return list ? tabs.filter(t => t.closest('[role="tablist"]') === list) : tabs;
+  };
+
+  // Click a tab and wait for the selection to actually move. Returns false if
+  // it never does, so the caller can stop iterating instead of re-capturing the
+  // same file under different names.
+  const selectTab = async (tab) => {
+    if (tab.getAttribute('aria-selected') === 'true') return true;
+    tab.click();
+    for (let i = 0; i < 20; i++) {
+      await sleep(150);
+      if (tab.getAttribute('aria-selected') === 'true') {
+        await sleep(700);   // let the editor swap documents and the panel re-anchor
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const tabs = fileTabs();
+  const files = [];
+  let tabIteration = tabs.length > 1 ? 'full' : 'single';
+  if (tabs.length > 1) {
+    const original = tabs.find(t => t.getAttribute('aria-selected') === 'true');
+    for (const tab of tabs) {
+      if (!(await selectTab(tab))) { tabIteration = 'aborted'; break; }
+      hud.textContent = 'Overleaf → Claude: capturing ' + (fileFromLabel(cleanLabel(tab)) || 'file') + '…';
+      files.push(await captureCurrentFile());
+    }
+    if (original) await selectTab(original);   // put the user back where they were
+  }
+  if (!files.length) files.push(await captureCurrentFile());
+
+  const project = (document.title || 'overleaf')
+    .replace(/\s*-\s*(Online LaTeX Editor\s*)?Overleaf.*$/i, '').trim() || 'overleaf';
+  const totals = files.reduce((s, f) => ({
+    threads: s.threads + f.threadCount,
+    msgs: s.msgs + f.messageCount,
+    trunc: s.trunc + f.truncatedCount,
+    unparsed: s.unparsed + f.selectorHealth.entriesUnparsed
+  }), { threads: 0, msgs: 0, trunc: 0, unparsed: 0 });
+  const unnamed = files.filter(f => f.fileSource === 'none').length;
+
   const payload = {
-    generator: 'overleaf-comments-bookmarklet v1.3',
+    generator: 'overleaf-comments-bookmarklet v1.4',
     project: project,
-    file: file,
-    fileSource: fileSource,
     url: location.href,
     capturedAt: new Date().toISOString(),
-    threadCount: threads.length,
-    messageCount: msgCount,
-    selectorHealth: selectorHealth,
-    threads: threads,
-    trackedChanges: {
-      note: 'swept top-to-bottom across the open file; for the authoritative set, Review > Accept in Overleaf so the text syncs via git',
-      items: trackedChanges
-    }
+    fileCount: files.length,
+    tabIteration: tabIteration,   // 'full' = every open tab, 'single' = one tab open or no tab strip found, 'aborted' = a tab refused to switch
+    threadCount: totals.threads,
+    messageCount: totals.msgs,
+    trackedChangesNote: 'swept top-to-bottom per file; for the authoritative set, Review > Accept in Overleaf so the text syncs via git',
+    files: files
   };
 
   // Download the JSON (and copy to clipboard as a convenience fallback).
   const json = JSON.stringify(payload, null, 2);
-  let slug = (project + '_' + file).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  const fileTag = files.length === 1 ? files[0].file : files.length + '_files';
+  let slug = (project + '_' + fileTag).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
   if (!slug) slug = 'overleaf';
   const stamp = new Date().toISOString().slice(0, 10);
   const a = document.createElement('a');
@@ -222,18 +299,21 @@
   try { await navigator.clipboard.writeText(json); clip = ' Also copied to clipboard.'; } catch (e) {}
 
   hud.remove();
-  alert('Overleaf → Claude: captured ' + threads.length + ' comment threads (' + msgCount +
-    ' messages) from ' + file + ', swept top to bottom.\nDownloaded ' + a.download +
-    ' to your Downloads folder.' + clip +
-    (truncCount ? '\n\nWARNING: ' + truncCount + ' comment(s) may still be cut off (flagged ' +
+  const perFile = files.map(f => '  ' + f.file + ': ' + f.threadCount + ' thread' +
+    (f.threadCount === 1 ? '' : 's') + ' (' + f.messageCount + ' message' +
+    (f.messageCount === 1 ? '' : 's') + ')').join('\n');
+  alert('Overleaf → Claude: captured ' + files.length + ' file' + (files.length === 1 ? '' : 's') +
+    ', ' + totals.threads + ' comment threads (' + totals.msgs + ' messages).\n' + perFile +
+    '\nDownloaded ' + a.download + ' to your Downloads folder.' + clip +
+    (tabIteration === 'aborted' ? '\n\nWARNING: could not switch between file tabs, so only the ' +
+      'files listed above were captured. Open the missing file and click again.' : '') +
+    (totals.trunc ? '\n\nWARNING: ' + totals.trunc + ' comment(s) may still be cut off (flagged ' +
       'possiblyTruncated in the file). Open those threads fully and run again.' : '') +
-    (unparsed.size ? '\n\nWARNING: ' + unparsed.size + ' comment entr' + (unparsed.size === 1 ? 'y' : 'ies') +
+    (totals.unparsed ? '\n\nWARNING: ' + totals.unparsed + ' comment entr' + (totals.unparsed === 1 ? 'y' : 'ies') +
       ' rendered but could not be parsed. Overleaf has likely changed its comment markup since this ' +
-      'build (v1.3, 2026-07-14). Send Claude this message so it can update the tool.' : '') +
-    (fileSource === 'none' ? '\n\nNOTE: could not identify the open filename (breadcrumb, tab, and ' +
-      'file tree all failed), so the JSON says "unknown". The comments themselves are still captured.' :
-     fileSource !== 'breadcrumbs' ? '\n\nNOTE: filename read from the ' + fileSource +
-      ' because the editor breadcrumb was not found.' : '') +
-    '\n\nThis captures the current file and unresolved comments only. For other files click again ' +
-    'after switching; for resolved comments turn on "Show resolved comments" first.');
+      'build (v1.4, 2026-07-14). Send Claude this message so it can update the tool.' : '') +
+    (unnamed ? '\n\nNOTE: ' + unnamed + ' capture(s) have file "unknown" because no filename source ' +
+      '(breadcrumb, tab, file tree) resolved. The comments themselves are still captured.' : '') +
+    '\n\nThis captures open tabs and unresolved comments only. For files not open in a tab, open them ' +
+    'and click again; for resolved comments turn on "Show resolved comments" first.');
 })();

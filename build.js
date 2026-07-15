@@ -34,24 +34,26 @@ or <kbd>Ctrl+Shift+B</kbd> (Windows/Linux) to show it, then drag.</p>
 <h2>Each time you want Claude to read comments</h2>
 <ol>
   <li>Open the Overleaf project and open the <b>Review</b> panel (the Review icon in the
-      left sidebar) so the comments are visible on the page.</li>
+      left sidebar) so the comments are visible on the page. Open a tab for each file you
+      want captured.</li>
   <li>Click the <b>Overleaf → Claude</b> bookmark.</li>
-  <li>It scrolls the document top to bottom, expands every "show more", captures all comments
-      plus tracked changes, and downloads <code>overleaf_comments_&lt;project&gt;_&lt;date&gt;.json</code> to Downloads.
-      A green note in the corner shows it is working; the scroll position is restored when it finishes.</li>
+  <li>It visits every open file tab, scrolls each file top to bottom, expands every "show more",
+      captures all comments plus tracked changes, and downloads
+      <code>overleaf_comments_&lt;project&gt;_&lt;date&gt;.json</code> to Downloads. A green note in
+      the corner names the file it is working on; you are returned to the tab you started on.</li>
   <li>Using Claude Code? Say "done" and Claude reads the file from Downloads. Otherwise the file
       is plain JSON, open it in any editor or point any script or LLM at it.</li>
 </ol>
 <div class="note">
-<p><b>Limits.</b> Captures the file currently open and the "Current file" tab only, so click once
-per file. Resolved comments are excluded unless you turn on <b>Show resolved comments</b> (inbox
-icon in the Review panel header) first. Comments and tracked changes are now swept across the whole
+<p><b>Limits.</b> Captures open editor tabs only, a file without a tab is skipped, so open a tab per
+file first. Resolved comments are excluded unless you turn on <b>Show resolved comments</b> (inbox
+icon in the Review panel header) first. Comments and tracked changes are swept across each whole
 file; for the authoritative tracked-change set you can still use <b>Review → Accept</b> in Overleaf,
 which syncs the text through git. If a comment is flagged <code>possiblyTruncated</code> in the file,
 open that thread fully and run again. Overleaf is rolling out an editor redesign (tabs, simplified
-toolbar), so the bookmarklet now checks its own selectors: if comments render but cannot be parsed,
-or the filename cannot be found, the finish alert says so. When you see such a warning, ask Claude
-to patch the tool.</p>
+toolbar), so the bookmarklet checks its own selectors: if comments render but cannot be parsed, the
+filename cannot be found, or a tab refuses to switch, the finish alert says so. When you see such a
+warning, ask Claude to patch the tool.</p>
 <p><b>Safety.</b> Runs only when clicked, only in your open tab, reads only what is on the page,
 downloads locally, sends nothing anywhere, stores no credential.</p>
 </div>
