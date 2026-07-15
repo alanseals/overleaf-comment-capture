@@ -33,8 +33,8 @@ const html = `<!DOCTYPE html>
 or <kbd>Ctrl+Shift+B</kbd> (Windows/Linux) to show it, then drag.</p>
 <h2>Each time you want Claude to read comments</h2>
 <ol>
-  <li>Open the Overleaf project and open the <b>Review</b> panel (comment icon, top right)
-      so the comments are visible on the page.</li>
+  <li>Open the Overleaf project and open the <b>Review</b> panel (the Review icon in the
+      left sidebar) so the comments are visible on the page.</li>
   <li>Click the <b>Overleaf → Claude</b> bookmark.</li>
   <li>It scrolls the document top to bottom, expands every "show more", captures all comments
       plus tracked changes, and downloads <code>overleaf_comments_&lt;project&gt;_&lt;date&gt;.json</code> to Downloads.
@@ -48,8 +48,10 @@ per file. Resolved comments are excluded unless you turn on <b>Show resolved com
 icon in the Review panel header) first. Comments and tracked changes are now swept across the whole
 file; for the authoritative tracked-change set you can still use <b>Review → Accept</b> in Overleaf,
 which syncs the text through git. If a comment is flagged <code>possiblyTruncated</code> in the file,
-open that thread fully and run again. If Overleaf redesigns the review panel, the bookmarklet may
-need a patch: ask Claude.</p>
+open that thread fully and run again. Overleaf is rolling out an editor redesign (tabs, simplified
+toolbar), so the bookmarklet now checks its own selectors: if comments render but cannot be parsed,
+or the filename cannot be found, the finish alert says so. When you see such a warning, ask Claude
+to patch the tool.</p>
 <p><b>Safety.</b> Runs only when clicked, only in your open tab, reads only what is on the page,
 downloads locally, sends nothing anywhere, stores no credential.</p>
 </div>

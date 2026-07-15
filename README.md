@@ -35,8 +35,8 @@ into the DevTools Console (F12); Chrome may ask you to type `allow pasting` firs
 
 ## Use
 
-1. Open the Overleaf project and open the **Review** panel (the comment icon, top right).
-   The comments must be visible on the page, this is what a plain "Save page" misses.
+1. Open the Overleaf project and open the **Review** panel (the Review icon in the left
+   sidebar). The comments must be visible on the page, this is what a plain "Save page" misses.
 2. Click the bookmark.
 3. It scrolls the file top to bottom, expands every "show more", collects each comment
    (author, timestamp, full untruncated text, and its `data-pos` anchor), grabs the
@@ -55,13 +55,16 @@ selectors patched.
 
 ```json
 {
-  "generator": "overleaf-comments-bookmarklet v1.2",
+  "generator": "overleaf-comments-bookmarklet v1.3",
   "project": "My_Paper",
   "file": "main.tex",
+  "fileSource": "breadcrumbs",
   "url": "https://www.overleaf.com/project/<id>",
   "capturedAt": "2026-07-11T02:25:38.396Z",
   "threadCount": 13,
   "messageCount": 13,
+  "selectorHealth": { "reviewPanel": true, "editorScroller": true, "breadcrumbs": true,
+    "fileSource": "breadcrumbs", "threadsParsed": 13, "entriesUnparsed": 0 },
   "threads": [
     { "dataPos": 2755, "dataTop": 1637, "messages": [
         { "author": "Jane Doe", "time": "10 July, 7:53 am",
@@ -85,8 +88,15 @@ selectors patched.
   "Current file" tab, not the "Overview" tab and not other files. For a multi-file
   project, click again after switching files.
 - **DOM-dependent.** It targets Overleaf's current review-panel class names
-  (`review-panel-entry-comment`, `review-panel-comment-body`, ...). If Overleaf
-  redesigns the panel, `capture.js` needs a small patch and `install.html` a regenerate.
+  (`review-panel-entry-comment`, `review-panel-comment-body`, ...). Overleaf is mid-way
+  through its 2026 editor redesign (file tabs, simplified toolbar, Review moved to the
+  left sidebar), so this is an active risk, not a theoretical one. As of v1.3 the tool
+  checks its own selectors instead of failing silently: the filename falls back from the
+  editor breadcrumb to the selected editor tab to the selected file-tree entry (the JSON
+  records which source won in `fileSource`), a `selectorHealth` block reports what
+  resolved, and the finish alert warns if comment entries rendered but could not be
+  parsed. When a warning appears, `capture.js` needs a small patch and `install.html`
+  a regenerate.
 - **`data-pos` indexes the live edited document**, which may hold tracked changes
   the Git clone lacks, so map comments to source by content, not by offset alone.
 
