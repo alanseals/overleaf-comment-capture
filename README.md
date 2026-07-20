@@ -57,7 +57,7 @@ selectors patched.
 
 ```json
 {
-  "generator": "overleaf-comments-bookmarklet v1.4",
+  "generator": "overleaf-comments-bookmarklet v1.5",
   "project": "My_Paper",
   "url": "https://www.overleaf.com/project/<id>",
   "capturedAt": "2026-07-11T02:25:38.396Z",
@@ -90,8 +90,8 @@ which case only the files listed were captured.
 
 - **Open tabs only.** The review panel virtualizes: it only renders the comment entries
   and tracked-change spans whose anchor line is near the viewport. As of v1.2 the tool
-  scrolls each file top to bottom and de-duplicates by anchor, so it captures every
-  comment in the file rather than only the first screen. As of v1.4 it also visits every
+  scrolls each file top to bottom and de-duplicates by root-comment content, so it captures
+  every comment in the file rather than only the first screen. As of v1.4 it also visits every
   open editor tab in one click, but a file with no open tab is not captured, open it
   first. Tracked changes are swept the same way; for the authoritative set you can still
   use **Review → Accept** in Overleaf, which lands the text in the source where Git can

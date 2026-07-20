@@ -1,4 +1,4 @@
-// Overleaf -> Claude comment capture bookmarklet (source)  v1.4
+// Overleaf -> Claude comment capture bookmarklet (source)  v1.5
 // Built 2026-07-10, hardened 2026-07-10 after a hostile audit, against the
 // review-panel DOM verified live that day (classes: review-panel-entry-comment,
 // review-panel-comment-body, review-panel-entry-user, review-panel-entry-time,
@@ -22,6 +22,18 @@
 // token bearing a known extension) and iterates every file tab in the editor's
 // tab strip, capturing each open file in one click. If tab switching does not
 // take effect the iteration aborts safely and the current file is captured alone.
+// v1.5 (2026-07-20): stop de-duplicating comment threads by the data-pos anchor
+// alone. Overleaf's latest editor returns data-pos=0 for every review-panel
+// entry, so the old anchor key collapsed all comments in a file onto one bucket
+// ('p0') and kept only the longest-text one, silently dropping the rest. The key
+// now combines the anchor (when it still varies it disambiguates; a constant 0
+// does no harm) with the ROOT comment's author, time, and FULL normalized text.
+// Full text, not a prefix, means two distinct comments never share a key, so a
+// distinct comment is never silently dropped. Keying on the root message only,
+// not its replies, keeps the key stable when a reply loads on a later scroll
+// stop. Same-key entries are the same comment re-rendered and are merged, keeping
+// the most complete render. The expand loop re-checks truncation on every pass so
+// a body is captured in full before it is scraped, not left half-open.
 // Runs only when clicked, only in the already-open Overleaf tab. Reads the
 // rendered page, downloads a JSON file, sends nothing anywhere.
 (async () => {
@@ -40,7 +52,7 @@
     alert('Overleaf → Claude: could not find the review panel.\n\n' +
       'Open the Review panel first (the Review icon in the left sidebar), then click again.\n\n' +
       'If the Review panel IS already open and you still see this, Overleaf may have changed ' +
-      'its layout since this tool was built (v1.4, 2026-07-14). Send Claude this exact message ' +
+      'its layout since this tool was built (v1.5, 2026-07-20). Send Claude this exact message ' +
       'so it can update the tool.');
     return;
   }
@@ -78,12 +90,23 @@
     return { dataPos: numAttr(entry, 'data-pos'), dataTop: numAttr(entry, 'data-top'), messages };
   };
   const threadTextLen = (t) => t.messages.reduce((n, m) => n + m.text.length, 0);
+  // Root-comment signature used for de-duplication. The data-pos anchor is no
+  // longer trustworthy on its own (the current editor reports 0 for every entry),
+  // so identity comes from the ROOT message's author, time, and FULL normalized
+  // text. Full text, not a prefix, guarantees distinct comments get distinct keys
+  // so none is silently dropped; root-only means a reply rendering on a later
+  // scroll stop does not fork the key.
+  const normText = (s) => (s || '').replace(/\s+/g, ' ').trim();
+  const rootSig = (t) => {
+    const m = t.messages[0] || {};
+    return normText(m.author) + '\u0001' + normText(m.time) + '\u0001' + normText(m.text);
+  };
 
   // Accumulators keyed by a stable identity so re-rendered entries de-duplicate.
   // Cleared between files when iterating tabs.
-  const threadMap = new Map();   // key: anchor -> best (most-expanded) thread seen
+  const threadMap = new Map();   // key: anchor+root-content -> most complete render
   const changeMap = new Map();   // key: kind + text -> tracked-change span
-  const clickedEntries = new WeakSet();
+  const clickAttempts = new WeakMap();   // entry -> times its "show more" was clicked
   // Entries that rendered with text but yielded no parsable message: the signature
   // of Overleaf renaming an inner class (2026 redesign churn). Keyed by anchor.
   const unparsed = new Set();
@@ -94,15 +117,15 @@
     for (let pass = 0; pass < 12; pass++) {
       let clicked = 0;
       $$('.review-panel-entry-comment', panel).forEach(entry => {
-        if (clickedEntries.has(entry)) return;
         const body = entry.querySelector('.review-panel-comment-body');
-        if (body && isTruncated(body.textContent)) {
-          const btn = entry.querySelector('.review-panel-expandable-links button');
-          if (btn) { btn.click(); clickedEntries.add(entry); clicked++; }
-        }
+        if (!(body && isTruncated(body.textContent))) return;   // re-checked every pass
+        const tries = clickAttempts.get(entry) || 0;
+        if (tries >= 3) return;                                  // stop nagging a stuck entry
+        const btn = entry.querySelector('.review-panel-expandable-links button');
+        if (btn) { btn.click(); clickAttempts.set(entry, tries + 1); clicked++; }
       });
       if (clicked === 0) break;
-      await sleep(300);
+      await sleep(400);
     }
     $$('.review-panel-entry-comment', panel).forEach(entry => {
       const t = scrapeThread(entry);
@@ -112,11 +135,13 @@
         }
         return;
       }
-      const key = t.dataPos != null ? 'p' + t.dataPos
-                : t.dataTop != null ? 't' + t.dataTop
-                : 'x' + (threadMap.size + 1);
+      const key = 'p' + (t.dataPos == null ? 'n' : t.dataPos) + '\u0000' + rootSig(t);
       const prev = threadMap.get(key);
-      if (!prev || threadTextLen(t) > threadTextLen(prev)) threadMap.set(key, t);
+      // Distinct comments get distinct keys, so this only merges the same comment
+      // re-rendered; keep the most complete render (most messages, then longest).
+      const better = !prev || t.messages.length > prev.messages.length ||
+        (t.messages.length === prev.messages.length && threadTextLen(t) > threadTextLen(prev));
+      if (better) threadMap.set(key, t);
     });
     $$('.cm-content .ol-cm-change').forEach(s => {
       const text = (s.textContent || '').trim().slice(0, 2000);
@@ -271,7 +296,7 @@
   const unnamed = files.filter(f => f.fileSource === 'none').length;
 
   const payload = {
-    generator: 'overleaf-comments-bookmarklet v1.4',
+    generator: 'overleaf-comments-bookmarklet v1.5',
     project: project,
     url: location.href,
     capturedAt: new Date().toISOString(),
@@ -311,7 +336,7 @@
       'possiblyTruncated in the file). Open those threads fully and run again.' : '') +
     (totals.unparsed ? '\n\nWARNING: ' + totals.unparsed + ' comment entr' + (totals.unparsed === 1 ? 'y' : 'ies') +
       ' rendered but could not be parsed. Overleaf has likely changed its comment markup since this ' +
-      'build (v1.4, 2026-07-14). Send Claude this message so it can update the tool.' : '') +
+      'build (v1.5, 2026-07-20). Send Claude this message so it can update the tool.' : '') +
     (unnamed ? '\n\nNOTE: ' + unnamed + ' capture(s) have file "unknown" because no filename source ' +
       '(breadcrumb, tab, file tree) resolved. The comments themselves are still captured.' : '') +
     '\n\nThis captures open tabs and unresolved comments only. For files not open in a tab, open them ' +
