@@ -1,4 +1,4 @@
-// Overleaf -> Claude comment capture bookmarklet (source)  v1.5
+// Overleaf -> Claude comment capture bookmarklet (source)  v1.6
 // Built 2026-07-10, hardened 2026-07-10 after a hostile audit, against the
 // review-panel DOM verified live that day (classes: review-panel-entry-comment,
 // review-panel-comment-body, review-panel-entry-user, review-panel-entry-time,
@@ -34,6 +34,15 @@
 // stop. Same-key entries are the same comment re-rendered and are merged, keeping
 // the most complete render. The expand loop re-checks truncation on every pass so
 // a body is captured in full before it is scraped, not left half-open.
+// v1.6 (2026-07-20): de-duplicate comments ACROSS files, not just within one.
+// The current editor's review panel is not always file-scoped: switching to a
+// file tab that has no comments of its own leaves the panel showing the previous
+// file's comments, so multi-tab capture billed the same comments to every file
+// (observed: main.tex's 8 comments copied onto references.bib, threadCount 16 for
+// 8 real comments). A comment anchors to exactly one file, so the first file to
+// surface a given comment now owns it; a later file that only re-shows already
+// seen comments yields none and is marked panelUnchanged. Tracked changes come
+// from the editor body, which does re-scope on tab switch, so they are untouched.
 // Runs only when clicked, only in the already-open Overleaf tab. Reads the
 // rendered page, downloads a JSON file, sends nothing anywhere.
 (async () => {
@@ -52,7 +61,7 @@
     alert('Overleaf → Claude: could not find the review panel.\n\n' +
       'Open the Review panel first (the Review icon in the left sidebar), then click again.\n\n' +
       'If the Review panel IS already open and you still see this, Overleaf may have changed ' +
-      'its layout since this tool was built (v1.5, 2026-07-20). Send Claude this exact message ' +
+      'its layout since this tool was built (v1.6, 2026-07-20). Send Claude this exact message ' +
       'so it can update the tool.');
     return;
   }
@@ -110,6 +119,10 @@
   // Entries that rendered with text but yielded no parsable message: the signature
   // of Overleaf renaming an inner class (2026 redesign churn). Keyed by anchor.
   const unparsed = new Set();
+  // Root signatures already attributed to a file. NOT cleared between files, so a
+  // project-wide panel (or a tab switch that does not re-scope the panel) cannot
+  // bill the same comment to two files: the first file to surface it owns it.
+  const seenSig = new Set();
 
   // Collect whatever the review panel and editor render right now, expanding any
   // truncated comment first. Called at every scroll stop; the maps de-duplicate.
@@ -224,8 +237,20 @@
     // Overview layout), sweep it too. sweep() no-ops when it does not scroll,
     // and the maps make the overlap harmless.
     if (panel !== scroller) await sweep(panel);
-    const threads = Array.from(threadMap.values())
+    const scraped = Array.from(threadMap.values())
       .sort((a, b) => (a.dataPos == null ? Infinity : a.dataPos) - (b.dataPos == null ? Infinity : b.dataPos));
+    // Cross-file de-duplication: keep only comments not already attributed to an
+    // earlier file. When the panel is project-wide, or a tab switch did not change
+    // it, every comment here is already claimed and this file yields none.
+    const threads = [];
+    let duplicatesDropped = 0;
+    for (const t of scraped) {
+      const sig = rootSig(t);
+      if (seenSig.has(sig)) { duplicatesDropped++; continue; }
+      seenSig.add(sig);
+      threads.push(t);
+    }
+    const panelUnchanged = scraped.length > 0 && threads.length === 0;
     const id = resolveFile();
     return {
       file: id.file,
@@ -233,10 +258,12 @@
       threadCount: threads.length,
       messageCount: threads.reduce((n, t) => n + t.messages.length, 0),
       truncatedCount: threads.reduce((n, t) => n + t.messages.filter(m => m.possiblyTruncated).length, 0),
+      panelUnchanged: panelUnchanged,
       selectorHealth: {
         breadcrumbs: id.breadcrumbs,
         editorScroller: !!scroller,
         threadsParsed: threads.length,
+        duplicatesDropped: duplicatesDropped,
         entriesUnparsed: unparsed.size
       },
       threads: threads,
@@ -296,7 +323,7 @@
   const unnamed = files.filter(f => f.fileSource === 'none').length;
 
   const payload = {
-    generator: 'overleaf-comments-bookmarklet v1.5',
+    generator: 'overleaf-comments-bookmarklet v1.6',
     project: project,
     url: location.href,
     capturedAt: new Date().toISOString(),
@@ -326,7 +353,9 @@
   hud.remove();
   const perFile = files.map(f => '  ' + f.file + ': ' + f.threadCount + ' thread' +
     (f.threadCount === 1 ? '' : 's') + ' (' + f.messageCount + ' message' +
-    (f.messageCount === 1 ? '' : 's') + ')').join('\n');
+    (f.messageCount === 1 ? '' : 's') + ')' +
+    (f.panelUnchanged ? ' [no comments unique to this file]' : '')).join('\n');
+  const deduped = files.reduce((n, f) => n + f.selectorHealth.duplicatesDropped, 0);
   alert('Overleaf → Claude: captured ' + files.length + ' file' + (files.length === 1 ? '' : 's') +
     ', ' + totals.threads + ' comment threads (' + totals.msgs + ' messages).\n' + perFile +
     '\nDownloaded ' + a.download + ' to your Downloads folder.' + clip +
@@ -336,9 +365,12 @@
       'possiblyTruncated in the file). Open those threads fully and run again.' : '') +
     (totals.unparsed ? '\n\nWARNING: ' + totals.unparsed + ' comment entr' + (totals.unparsed === 1 ? 'y' : 'ies') +
       ' rendered but could not be parsed. Overleaf has likely changed its comment markup since this ' +
-      'build (v1.5, 2026-07-20). Send Claude this message so it can update the tool.' : '') +
+      'build (v1.6, 2026-07-20). Send Claude this message so it can update the tool.' : '') +
     (unnamed ? '\n\nNOTE: ' + unnamed + ' capture(s) have file "unknown" because no filename source ' +
       '(breadcrumb, tab, file tree) resolved. The comments themselves are still captured.' : '') +
+    (deduped ? '\n\nNOTE: ' + deduped + ' comment(s) that the panel showed under more than one file ' +
+      'were counted once, under the first file that carried them, so each comment appears under a ' +
+      'single file above.' : '') +
     '\n\nThis captures open tabs and unresolved comments only. For files not open in a tab, open them ' +
     'and click again; for resolved comments turn on "Show resolved comments" first.');
 })();

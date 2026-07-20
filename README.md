@@ -57,7 +57,7 @@ selectors patched.
 
 ```json
 {
-  "generator": "overleaf-comments-bookmarklet v1.5",
+  "generator": "overleaf-comments-bookmarklet v1.6",
   "project": "My_Paper",
   "url": "https://www.overleaf.com/project/<id>",
   "capturedAt": "2026-07-11T02:25:38.396Z",
@@ -93,7 +93,10 @@ which case only the files listed were captured.
   scrolls each file top to bottom and de-duplicates by root-comment content, so it captures
   every comment in the file rather than only the first screen. As of v1.4 it also visits every
   open editor tab in one click, but a file with no open tab is not captured, open it
-  first. Tracked changes are swept the same way; for the authoritative set you can still
+  first. As of v1.6 that de-duplication also runs across files, so a comment the panel
+  shows under more than one tab is reported once under the first file that carried it (a
+  comment anchors to a single file); a file whose panel only re-showed another file's
+  comments is marked `panelUnchanged`. Distinct comments on different files are all kept. Tracked changes are swept the same way; for the authoritative set you can still
   use **Review → Accept** in Overleaf, which lands the text in the source where Git can
   sync it.
 - **Unresolved comments only.** Resolved comments are excluded unless you turn on
